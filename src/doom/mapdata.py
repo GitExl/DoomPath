@@ -388,13 +388,21 @@ class MapData(object):
         # Detect tagged and special sectors, these are likely going to move.
         for sector_index, sector in enumerate(self.sectors):
             special = sector[SECTOR_SPECIAL]
-
+            tag = sector[SECTOR_TAG]
             value = self.config.sector_types.get(special)
-            if value is not None:
+            
+            # Special tags.
+            if tag == 667 or tag == 666:
+                self.apply_extra_effect(sector_index, 'moves')
+            
+            # Registered special sector type.
+            elif value is not None:
                 self.apply_extra_effect(sector_index, value)
+                
+            # Boom generalized sector types.
             else:
                 for flag, value in self.config.sector_generalized_types.iteritems():
-                    if (special and flag) != 0:
+                    if (special & flag) != 0:
                         self.apply_extra_effect(sector_index, value)
             
         # Detect linedef activation.
@@ -414,7 +422,7 @@ class MapData(object):
                     self.apply_extra_effect(sector_index, 'moves')
             
             # Activates tagged sector?
-            elif line_tag != 0 and line_type in self.config.tag_activation_specials:
+            elif line_tag != 0 and (line_type in self.config.tag_activation_specials or line_type in self.config.backside_activation_specials):
                 target_sectors = self.get_tag_sectors(line_tag)
                 for sector_index in target_sectors:
                     self.apply_extra_effect(sector_index, 'moves')

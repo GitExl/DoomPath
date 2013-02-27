@@ -1,4 +1,3 @@
-from doom.mapdata import SectorExtra
 from doom.mapenum import *
 from doom.trig import box_intersects_line, box_intersects_box, point_in_subsector
 import config
@@ -13,14 +12,15 @@ class PositionState(object):
         self.radius = 0
         self.height = 0
         
-        self.floorz = 0
-        self.ceilz = 0
+        self.floorz = -0x8000
+        self.ceilz = 0x8000
         
         self.blockline = False
         self.blockthing = False
         self.steep = False
         
-        self.special_sector = -1
+        self.special_sector = None
+        self.moves = False
         self.sector_index = 0
         self.base_sector_index = 0
 
@@ -69,8 +69,6 @@ class Walker(object):
         state.z = z
         state.radius = radius
         state.height = height
-        state.floorz = -0x8000
-        state.ceilz = 0x8000
         
         subsector_index = point_in_subsector(self.map_data.c_mapdata, x, y)
         state.sector_index = self.map_data.subsector_sectors[subsector_index]
@@ -120,23 +118,21 @@ class Walker(object):
                             sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_FRONT]
                             if sidedef_index == SIDEDEF_NONE:
                                 state.blockline = True
-                                continue
-                            
-                            sidedef = self.map_data.sidedefs[sidedef_index]
-                            state.sector_index = sidedef[SIDEDEF_SECTOR]
-                            if state.sector_index != state.base_sector_index:
-                                self.check_sector_position(state)
+                            else:
+                                sidedef = self.map_data.sidedefs[sidedef_index]
+                                state.sector_index = sidedef[SIDEDEF_SECTOR]
+                                if state.sector_index != state.base_sector_index:
+                                    self.check_sector_position(state)
                             
                             # Backside.
                             sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_BACK]
                             if sidedef_index == SIDEDEF_NONE:
                                 state.blockline = True
-                                continue
-                            
-                            sidedef = self.map_data.sidedefs[sidedef_index]
-                            state.sector_index = sidedef[SIDEDEF_SECTOR]
-                            if state.sector_index != state.base_sector_index:
-                                self.check_sector_position(state)
+                            else:
+                                sidedef = self.map_data.sidedefs[sidedef_index]
+                                state.sector_index = sidedef[SIDEDEF_SECTOR]
+                                if state.sector_index != state.base_sector_index:
+                                    self.check_sector_position(state)
                                 
                 # Thing collisions.
                 if len(block.things) > 0:
@@ -183,7 +179,7 @@ class Walker(object):
                             # Above this thing, move the floor up to it.
                             if z >= thing_z:
                                 state.floorz = max(state.floorz, thing_z + thing_height)
-                                state.special_sector = -1
+                                state.special_sector = None
                                 
                             # Below this thing, move the ceiling down to it.
                             if z + height <= thing_z + thing_height:
@@ -198,7 +194,7 @@ class Walker(object):
             collision = True
         
         # Ceiling is too low.
-        elif z + height > state.ceilz and state.special_sector == -1:
+        elif z + height > state.ceilz and state.special_sector is None:
             collision = True
         
         # Z is below floor.
@@ -254,8 +250,12 @@ class Walker(object):
             sector_ceil_z = self.map_data.get_sector_ceil_z(ceil_sector_index, state.x, state.y)
             
         # Keep this new floor as the special floor.
-        if sector_floor_z >= state.floorz and self.map_data.sector_extra[floor_sector_index].is_special == True:
+        floor_extra = self.map_data.sector_extra[floor_sector_index]
+        if sector_floor_z >= state.floorz and floor_extra.is_special == True:
             state.special_sector = floor_sector_index
+            
+        # Detect any moving sectors.
+        state.moves = floor_extra.moves or state.moves
         
         # Choose tightest floor and ceiling fit.
         state.floorz = max(state.floorz, sector_floor_z)

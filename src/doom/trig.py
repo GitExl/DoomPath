@@ -19,20 +19,20 @@ box_on_line_side.restype = c_byte
 def box_intersects_line(left, top, right, bottom, x1, y1, x2, y2):
     if x1 < left and x2 >= left:
         iy = y1 + (y2 - y1) * (left - x1) / (x2 - x1)
-        if iy > bottom and iy < top:
+        if iy >= bottom and iy <= top:
             return True
     elif x1 > right and x2 <= right:
         iy = y1 + (y2 - y1) * (right - x1) / (x2 - x1)
-        if iy > bottom and iy < top:
+        if iy >= bottom and iy <= top:
             return True
     
     if y1 < bottom and y2 >= bottom:
         ix = x1 + (x2 - x1) * (bottom - y1) / (y2 - y1)
-        if ix > left and ix < right:
+        if ix >= left and ix <= right:
             return True
     elif y1 > top and y2 <= top:
         ix = x1 + (x2 - x1) * (top - y1) / (y2 - y1)
-        if ix > left and ix < right:
+        if ix >= left and ix <= right:
             return True
     
     return False

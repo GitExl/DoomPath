@@ -46,7 +46,7 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/doom2.wad')
+        wad_file = wad.WADReader('test/test_stairs.wad')
         self.map_data = mapdata.MapData(wad_file, 'MAP01')
         
         # Load dataset for map.

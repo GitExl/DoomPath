@@ -92,6 +92,10 @@ class NavGrid(object):
         sector_index = self.map_data.get_sector(x, y)
         self.set_element_extra(sector_index, element)
         
+        sector_extra = self.map_data.sector_extra[sector_index]
+        if sector_extra.moves == True:
+            element.special_sector = sector_index
+        
         self.element_tasks.append(element)
         
     
@@ -223,16 +227,14 @@ class NavGrid(object):
                 
                 
     def test_element(self, x, y, z, direction, element, new_element):
-        moves = False
         jump = False
 
         # See if an adjoining element can be placed.
         map_x, map_y, map_z = self.element_to_map(x, y, z)
         collision, state = self.walker.check_position(map_x, map_y, map_z, self.element_size, self.element_height)
         
-        if state.special_sector != -1:
+        if state.special_sector is not None:
             sector_extra = self.map_data.sector_extra[state.special_sector]
-            moves = sector_extra.moves
             if sector_extra.ignore == True:
                 return REASON_IGNORE, None
         
@@ -253,7 +255,7 @@ class NavGrid(object):
                     jump = True
                     
                 # If the sector moves during the game, ignore any higher height difference.
-                elif moves == False:
+                elif state.moves == False:
                     return REASON_TOO_HIGH, None
                 
         # Steep slopes cannot be walked up, only down.
@@ -261,7 +263,7 @@ class NavGrid(object):
             return REASON_SLOPE_TOO_STEEP, None
         
         # Snap to moving sector floor.
-        if moves == True:
+        if state.moves == True:
             z = state.floorz
         
         # Set origin element jumping flags.
@@ -279,15 +281,18 @@ class NavGrid(object):
         z = min(z, state.floorz)
         
         # Player cannot fit in the sector.
-        if (z < state.floorz or z + self.element_height > state.ceilz) and moves == False: 
+        if (z < state.floorz or z + self.element_height > state.ceilz) and (state.moves == False or state.blockthing == True): 
             return REASON_CANNOT_FIT, None
                               
         # See if an element exists in the updated location.
         new_element = self.get_element(x, y, z)
         if new_element is None:
             new_element = self.add_element(x, y, z)
-            if state.special_sector != -1:
+            if state.special_sector is not None:
                 self.set_element_extra(state.special_sector, new_element)
+                
+            if state.moves == True:
+                new_element.special_sector = state.special_sector
             
             self.element_tasks.append(new_element)
             
@@ -305,6 +310,3 @@ class NavGrid(object):
                 element.flags |= FLAG_DAMAGE_MEDIUM
             elif sector_extra.damage >= 20:
                 element.flags |= FLAG_DAMAGE_HIGH
-            
-        if sector_extra.moves == True:
-            element.special_sector = sector_index
