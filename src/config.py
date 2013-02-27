@@ -48,6 +48,7 @@ class Config(object):
         # Mandatory settings.
         self.backside_activation_specials = data['backside_activation_specials']
         self.tag_activation_specials = data['tag_activation_specials']
+        self.stair_specials = data['stair_specials']
         self.start_thing_types = data['start_thing_types']
         
         # Optional settings.

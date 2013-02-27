@@ -205,7 +205,68 @@ class MapData(object):
         # Generate other sector structures.
         self.setup_slopes()
         self.setup_threed_floors()
+        self.setup_stairs()
         
+        
+    def setup_stairs(self):
+        for linedef in self.linedefs:
+            action = linedef[self.LINEDEF_ACTION]
+            
+            is_boom = (action >= 0x3000 and action <= 0x33FF)
+            if not action in self.config.stair_specials and not is_boom:
+                continue
+            
+            # Stair actions start at 0x3000. floor texture ignorance starts at 0x200 in stair action, shifted by 9 bits.
+            if is_boom:
+                action = action - 0x3000
+                ignore_floor_texture = (((action - 0x0200) >> 9) & 0x1) == 0
+            else:
+                ignore_floor_texture = False
+            
+            if self.is_hexen:
+                tag = linedef[LINEDEF_DOOM_TAG]
+            else:
+                tag = linedef[LINEDEF_HEXEN_ARG0]
+                
+            # Build stair list for each starting sector.
+            start_sectors = self.get_tag_sectors(tag)
+            for sector_index in start_sectors:
+                current_sector_index = sector_index
+                
+                # Sectors with a linedef facing into the current sector are added until either
+                # there is no more shared linedef or the floor texture is different. 
+                while True:
+                    current_sector = self.sectors[current_sector_index]
+                    sector_extra = self.sector_extra[current_sector_index]
+                    sector_extra.moves = True
+                    sector_extra.is_special = True
+                    
+                    # Find next sector to mark as special.
+                    for sector_linedef in sector_extra.linedefs:
+                        
+                        # Ignore lindefs with only one side.
+                        if (sector_linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_TWOSIDED) == 0:
+                            continue
+                        if sector_linedef[self.LINEDEF_SIDEDEF_FRONT] == SIDEDEF_NONE:
+                            continue
+                        if sector_linedef[self.LINEDEF_SIDEDEF_BACK] == SIDEDEF_NONE:
+                            continue
+                        
+                        # If the front sidedef points to the current sector, the back sidedef references the new sector.
+                        sidedef_front = self.sidedefs[sector_linedef[self.LINEDEF_SIDEDEF_FRONT]]
+                        sidedef_back = self.sidedefs[sector_linedef[self.LINEDEF_SIDEDEF_BACK]]
+                        if sidedef_front[SIDEDEF_SECTOR] == current_sector_index:
+                            next_sector_index = sidedef_back[SIDEDEF_SECTOR]
+                            break
+                    else:
+                        break
+
+                    if ignore_floor_texture == False:
+                        next_sector = self.sectors[next_sector_index]
+                        if next_sector[SECTOR_FLOORTEX] != current_sector[SECTOR_FLOORTEX]:
+                            break
+                    current_sector_index = next_sector_index 
+                
         
     def setup_threed_floors(self):
         threed_count = 0
