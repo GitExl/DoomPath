@@ -23,6 +23,11 @@ class PositionState(object):
         self.moves = False
         self.sector_index = 0
         self.base_sector_index = 0
+        
+        self.box_top = 0
+        self.box_left = 0
+        self.box_bottom = 0
+        self.box_right = 0
 
 
 class Walker(object):
@@ -30,6 +35,7 @@ class Walker(object):
     def __init__(self, map_data, config):
         self.map_data = map_data
         self.config = config
+        self.state = PositionState()
         
         
     def get_bb_floor_z(self, x, y, radius, sector_index=None):
@@ -63,129 +69,42 @@ class Walker(object):
     
         
     def check_position(self, x, y, z, radius, height):
-        state = PositionState()
+        state = self.state
+        
         state.x = x
         state.y = y
         state.z = z
         state.radius = radius
         state.height = height
         
+        state.floorz = -0x8000
+        state.ceilz = 0x8000
+        
+        state.blockline = False
+        state.blockthing = False
+        state.steep = False
+        state.moves = False
+        state.special_sector = None
+
+        state.box_top = y + radius
+        state.box_bottom = y - radius - 1
+        state.box_right = x + radius - 1
+        state.box_left = x - radius
+        
         subsector_index = point_in_subsector(self.map_data.c_mapdata, x, y)
         state.sector_index = self.map_data.subsector_sectors[subsector_index]
         state.base_sector_index = state.sector_index
             
         self.check_sector_position(state)
-        
-        box_top = y + radius
-        box_bottom = y - radius - 1
-        box_right = x + radius - 1
-        box_left = x - radius
            
-        x1, y1 = self.map_data.blockmap.map_to_blockmap(box_left, box_bottom)
-        x2, y2 = self.map_data.blockmap.map_to_blockmap(box_right, box_top)
+        x1, y1 = self.map_data.blockmap.map_to_blockmap(state.box_left, state.box_bottom)
+        x2, y2 = self.map_data.blockmap.map_to_blockmap(state.box_right, state.box_top)
         
-        # Walk through blockmap blocks that need to be examined.
-        cx = x1
-        while cx <= x2:
-
-            cy = y1
-            while cy <= y2:
-
-                block = self.map_data.blockmap.get(cx, cy)
-                cy += 1
-                if block is None:
-                    continue
-                
-                # Linedef collisions.
-                if len(block.linedefs) > 0:
-                    for line_index in block.linedefs:
-                        linedef = self.map_data.linedefs[line_index]
-                        vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
-                        vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
-                        lx1 = vertex1[VERTEX_X]
-                        ly1 = vertex1[VERTEX_Y]
-                        lx2 = vertex2[VERTEX_X]
-                        ly2 = vertex2[VERTEX_Y] 
-                                                                                
-                        if box_intersects_line(box_left, box_top, box_right, box_bottom, lx1, ly1, lx2, ly2) == True:                        
-                            # Cannot pass through impassible flagged lines.
-                            if (linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_IMPASSIBLE) != 0:
-                                state.blockline = True
-                                continue
-                            
-                            # Test each sidedef on the line.
-                            # Frontside.
-                            sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_FRONT]
-                            if sidedef_index == SIDEDEF_NONE:
-                                state.blockline = True
-                            else:
-                                sidedef = self.map_data.sidedefs[sidedef_index]
-                                state.sector_index = sidedef[SIDEDEF_SECTOR]
-                                if state.sector_index != state.base_sector_index:
-                                    self.check_sector_position(state)
-                            
-                            # Backside.
-                            sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_BACK]
-                            if sidedef_index == SIDEDEF_NONE:
-                                state.blockline = True
-                            else:
-                                sidedef = self.map_data.sidedefs[sidedef_index]
-                                state.sector_index = sidedef[SIDEDEF_SECTOR]
-                                if state.sector_index != state.base_sector_index:
-                                    self.check_sector_position(state)
-                                
-                # Thing collisions.
-                if len(block.things) > 0:
-                    for thing_index in block.things:
-                        thing = self.map_data.things[thing_index]
-                        thing_type = thing[self.map_data.THING_TYPE]
-                        
-                        # Parse custom bridge thing size.
-                        if self.config.bridge_custom_type is not None and thing_type == self.config.bridge_custom_type:
-                            thing_radius = thing[THING_HEXEN_ARG0]
-                            thing_height = thing[THING_HEXEN_ARG1]
-                            thing_flags = 0
-                            
-                        else:
-                            thing_def = self.config.thing_dimensions.get(thing_type)
-                            if thing_def is None:
-                                continue
-                             
-                            thing_radius = thing_def.radius
-                            thing_height = thing_def.height
-                            thing_flags = thing_def.flags
-                            
-                        thing_x = thing[self.map_data.THING_X]
-                        thing_y = thing[self.map_data.THING_Y]
-
-                        left = thing_x - thing_radius
-                        top = thing_y - thing_radius
-                        right = thing_x + thing_radius
-                        bottom = thing_y + thing_radius
-
-                        if box_intersects_box(box_left, box_bottom, box_right, box_top, left, top, right, bottom) == True:
-                            # Determine z position.
-                            if (thing_flags & config.DEF_FLAG_HANGING) != 0:
-                                thing_z = self.map_data.get_ceil_z(thing_x, thing_y) - thing_height
-                            else:
-                                thing_z = self.map_data.get_floor_z(thing_x, thing_y)                            
-                                if self.map_data.is_hexen == True:
-                                    thing_z += thing[THING_HEXEN_Z]
-                                
-                            # Intersection with a thing.
-                            if z + height >= thing_z and z <= thing_z + thing_height:
-                                state.blockthing = True
-                                
-                            # Above this thing, move the floor up to it.
-                            if z >= thing_z:
-                                state.floorz = max(state.floorz, thing_z + thing_height)
-                                state.special_sector = None
-                                
-                            # Below this thing, move the ceiling down to it.
-                            if z + height <= thing_z + thing_height:
-                                state.ceilz = min(state.ceilz, thing_z)
-            
-            cx += 1
+        linedefs, things = self.map_data.blockmap.get_region(x1, y1, x2, y2)
+        if len(linedefs) > 0:            
+            self.check_block_linedefs(state, linedefs)
+        if len(things) > 0:
+            self.check_block_things(state, things)
             
         collision = False
         
@@ -203,6 +122,99 @@ class Walker(object):
             
         return collision, state
     
+    
+    def check_block_linedefs(self, state, linedefs):
+        for line_index in linedefs:
+            linedef = self.map_data.linedefs[line_index]
+            vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
+            vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
+            lx1 = vertex1[VERTEX_X]
+            ly1 = vertex1[VERTEX_Y]
+            lx2 = vertex2[VERTEX_X]
+            ly2 = vertex2[VERTEX_Y] 
+                                                                    
+            if box_intersects_line(state.box_left, state.box_top, state.box_right, state.box_bottom, lx1, ly1, lx2, ly2) == False:
+                continue
+            
+            # Cannot pass through impassible flagged lines.
+            if (linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_IMPASSIBLE) != 0:
+                state.blockline = True
+                continue
+            
+            # Test each sidedef on the line.
+            # Frontside.
+            sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_FRONT]
+            if sidedef_index == SIDEDEF_NONE:
+                state.blockline = True
+            else:
+                sidedef = self.map_data.sidedefs[sidedef_index]
+                state.sector_index = sidedef[SIDEDEF_SECTOR]
+                if state.sector_index != state.base_sector_index:
+                    self.check_sector_position(state)
+            
+            # Backside.
+            sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_BACK]
+            if sidedef_index == SIDEDEF_NONE:
+                state.blockline = True
+            else:
+                sidedef = self.map_data.sidedefs[sidedef_index]
+                state.sector_index = sidedef[SIDEDEF_SECTOR]
+                if state.sector_index != state.base_sector_index:
+                    self.check_sector_position(state)
+
+
+    def check_block_things(self, state, things):
+        for thing_index in things:
+            thing = self.map_data.things[thing_index]
+            thing_type = thing[self.map_data.THING_TYPE]
+            
+            # Parse custom bridge thing size.
+            if self.config.bridge_custom_type is not None and thing_type == self.config.bridge_custom_type:
+                thing_radius = thing[THING_HEXEN_ARG0]
+                thing_height = thing[THING_HEXEN_ARG1]
+                thing_flags = 0
+                
+            else:
+                thing_def = self.config.thing_dimensions.get(thing_type)
+                if thing_def is None:
+                    continue
+                 
+                thing_radius = thing_def.radius
+                thing_height = thing_def.height
+                thing_flags = thing_def.flags
+                
+            thing_x = thing[self.map_data.THING_X]
+            thing_y = thing[self.map_data.THING_Y]
+
+            left = thing_x - thing_radius
+            top = thing_y - thing_radius
+            right = thing_x + thing_radius
+            bottom = thing_y + thing_radius
+
+            if box_intersects_box(state.box_left, state.box_bottom, state.box_right, state.box_top, left, top, right, bottom) == False:
+                continue
+            
+            # Determine z position.
+            if (thing_flags & config.DEF_FLAG_HANGING) != 0:
+                thing_z = self.map_data.get_ceil_z(thing_x, thing_y) - thing_height
+            else:
+                thing_z = self.map_data.get_floor_z(thing_x, thing_y)                            
+                if self.map_data.is_hexen == True:
+                    thing_z += thing[THING_HEXEN_Z]
+                
+            # Intersection with a thing.
+            if state.z + state.height >= thing_z and state.z <= thing_z + thing_height:
+                state.blockthing = True
+                
+            # Above this thing, move the floor up to it.
+            if state.z >= thing_z:
+                state.floorz = max(state.floorz, thing_z + thing_height)
+                state.special_sector = None
+                
+            # Below this thing, move the ceiling down to it.
+            if state.z + state.height <= thing_z + thing_height:
+                state.ceilz = min(state.ceilz, thing_z)
+
     
     def check_sector_position(self, state):
         sector_extra = self.map_data.sector_extra[state.sector_index]

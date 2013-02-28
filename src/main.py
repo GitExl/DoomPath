@@ -1,5 +1,6 @@
 from doom import wad, mapdata, maprender
 from nav import navgrid
+import cProfile
 import camera
 import config
 import pygame
@@ -46,7 +47,7 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/test_stairs.wad')
+        wad_file = wad.WADReader('test/eaeuro02.wad')
         self.map_data = mapdata.MapData(wad_file, 'MAP01')
         
         # Load dataset for map.
@@ -221,7 +222,7 @@ class Loop(object):
         self.camera.set_center(x, y)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':   
     loop = Loop()
-    loop.loop_init()
+    cProfile.run('loop.loop_init()')
     loop.loop_start()

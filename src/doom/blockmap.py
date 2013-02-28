@@ -20,7 +20,7 @@ class BlockMap(object):
         self.origin_x = 0
         self.origin_y = 0
         
-        self.Width = 0
+        self.width = 0
         self.height = 0
         
         self.blocksize = 64
@@ -34,6 +34,30 @@ class BlockMap(object):
             return None
         
         return self.blocks[x + y * self.width]
+    
+    
+    def get_region(self, x1, y1, x2, y2):
+        linedefs = []
+        things = []
+        blocks_len = len(self.blocks)
+        index = x1 + y1 * self.width
+        
+        cy = y1
+        while cy <= y2:
+            cx = x1
+            while cx <= x2:
+                if index >= 0 and index < blocks_len:
+                    block = self.blocks[index]
+                    linedefs.extend(block.linedefs)
+                    things.extend(block.things)
+                
+                index += 1
+                cx += 1
+                
+            index += self.width - 1
+            cy += 1
+        
+        return linedefs, things
     
     
     def blockmap_to_map(self, x, y):
