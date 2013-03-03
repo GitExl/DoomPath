@@ -46,8 +46,7 @@ reason_text = {
 
 
 class NavElement(object):
-    __slots__ = ('x', 'y', 'z', 'area', 'special_sector', 'flags', 'elements', 'index')
-    
+    __slots__ = ('x', 'y', 'z', 'special_sector', 'flags', 'elements', 'area', 'index')
     
     def __init__(self, x, y, z):
         self.x = x
@@ -82,7 +81,17 @@ class NavElement(object):
         self.flags = state[4]
         self.index = state[5]
         self.elements = state[6]
+        self.area = None
+    
+    def __eq__(self, other):
+        if other is None:
+            return False
         
+        return (self.special_sector == other.special_sector and self.flags == other.flags and self.z == other.z)
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
+     
 
 class NavGrid(object):
     
@@ -90,9 +99,11 @@ class NavGrid(object):
         self.config = config
         self.map_data = map_data
         
-        self.element_size = config.player_radius
+        self.element_size = config.player_radius / 2
         self.element_height = config.player_height
-        self.element_stride = self.map_data.width / self.element_size
+        
+        self.width = self.map_data.width / self.element_size
+        self.height = self.map_data.height / self.element_size
         
         self.walker = Walker(map_data, config)
         
@@ -128,7 +139,7 @@ class NavGrid(object):
     def add_element(self, x, y, z):
         element = NavElement(x, y, z)
 
-        element_hash = x + (y * self.element_stride)
+        element_hash = x + (y * self.width)
         elements = self.element_hash.get(element_hash)
         if elements is None:
             elements = {}
@@ -167,7 +178,7 @@ class NavGrid(object):
         # Rebuild element_hash
         print 'Rebuilding element hash table...'
         for element in self.elements:
-            element_hash = element.x + (element.y * self.element_stride)
+            element_hash = element.x + (element.y * self.width)
             elements = self.element_hash.get(element_hash)
             if elements is None:
                 elements = {}
@@ -176,7 +187,7 @@ class NavGrid(object):
             
     
     def get_element(self, x, y, z):
-        element_hash = x + (y * self.element_stride)
+        element_hash = x + (y * self.width)
         elements = self.element_hash.get(element_hash)
         if elements is not None:
             return elements.get(z)
@@ -185,7 +196,7 @@ class NavGrid(object):
     
     
     def get_element_list(self, x, y):
-        element_hash = x + (y * self.element_stride)
+        element_hash = x + (y * self.width)
         return self.element_hash.get(element_hash)
         
 
@@ -248,7 +259,6 @@ class NavGrid(object):
     
     def create_walkable_elements(self, config, iterations=-1):       
         iteration = 0
-        print 'Detecting walkable space...'
         
         while 1:
             iteration += 1

@@ -1,5 +1,6 @@
 from doom import wad, mapdata, maprender
 from nav import navgrid
+from nav.navmesh import NavMesh
 import camera
 import config
 import pygame
@@ -33,6 +34,8 @@ class Loop(object):
         self.camera = None
         self.map_data = None
         self.config = None
+        self.nav_grid = None
+        self.nav_mesh = None
         
         pygame.font.init()
         self.font = pygame.font.Font('04b_03__.ttf', 8)
@@ -47,8 +50,8 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/test.wad')
-        self.map_data = mapdata.MapData(wad_file, 'MAP01')
+        wad_file = wad.WADReader('test/av.wad')
+        self.map_data = mapdata.MapData(wad_file, 'MAP21')
         
         # Load dataset for map.
         if self.map_data.is_hexen:
@@ -85,13 +88,18 @@ class Loop(object):
             
             self.nav_grid.add_walkable_element(x, y, z)
         print 'Added {} starting elements.'.format(len(start_things))
-        
+                
+        print 'Detecting walkable space...'
+        if self.generate_grid == True:
+            self.nav_grid.create_walkable_elements(self.config)
+            self.nav_grid.write('test/nav.bin')
+        else:
+            self.nav_grid.read('test/nav.bin')
+            
+        print 'Generating navigation mesh...'
+        self.nav_mesh = NavMesh()
         if self.mode == MODE_INSPECT:
-            if self.generate_grid == True:
-                self.nav_grid.create_walkable_elements(self.config)
-                self.nav_grid.write('test/nav.bin')
-            else:
-                self.nav_grid.read('test/nav.bin')
+            self.nav_mesh.create_from_grid(self.nav_grid)
 
         print 'Creating display...'        
         pygame.init()
@@ -105,10 +113,14 @@ class Loop(object):
         
         while True:
             if self.mode == MODE_RENDER: 
-                self.nav_grid.create_walkable_elements(self.config, 50)
-                if len(self.nav_grid.element_tasks) == 0:
+                #self.nav_grid.create_walkable_elements(self.config, 50)
+                #if len(self.nav_grid.element_tasks) == 0:
+                    #break
+                    
+                if self.nav_mesh.create_from_grid(self.nav_grid, 1) == True:
                     break
                 self.update_display()
+                
                 #pygame.image.save(self.screen, 'images/screen_{:06d}.png'.format(self.iteration))
                 self.iteration += 1
             
@@ -161,10 +173,11 @@ class Loop(object):
         
         self.screen.fill(COLOR_BACKGROUND)
         
-        maprender.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        self.nav_grid.render_elements(self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        #maprender.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        #self.nav_grid.render_elements(self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         maprender.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
         maprender.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        self.nav_mesh.render(self.screen, self.camera)
         self.render_collision_box()
         
         pygame.display.flip()
