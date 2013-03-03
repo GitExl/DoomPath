@@ -30,6 +30,7 @@ REASON_LINE_BLOCK = 4
 REASON_THING_BLOCK = 5
 REASON_IGNORE = 6
 REASON_TOO_HIGH = 7
+REASON_LEAK = 8
 
 reason_text = {
     REASON_NONE: 'None',
@@ -39,7 +40,8 @@ reason_text = {
     REASON_LINE_BLOCK: 'Blocked by line',
     REASON_THING_BLOCK: 'Blocked by thing',
     REASON_IGNORE: 'Ignoring sector',
-    REASON_TOO_HIGH: 'Height difference too much'
+    REASON_TOO_HIGH: 'Height difference too much',
+    REASON_LEAK: 'Grid leak'
 }
 
 
@@ -290,6 +292,10 @@ class NavGrid(object):
 
         # See if an adjoining element can be placed.
         map_x, map_y, map_z = self.element_to_map(x, y, z)
+        if map_x < self.map_data.min_x or map_x > self.map_data.max_x or map_y < self.map_data.min_y or map_y > self.map_data.max_y:
+            print 'Grid leak at {}, {}'.format(map_x, map_y)
+            return REASON_LEAK, None
+        
         collision, state = self.walker.check_position(map_x, map_y, map_z, self.element_size, self.element_height)
         
         if state.special_sector is not None:
