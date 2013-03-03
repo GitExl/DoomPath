@@ -87,8 +87,8 @@ class Walker(object):
         state.special_sector = None
 
         state.box_top = y + radius
-        state.box_bottom = y - radius - 1
-        state.box_right = x + radius - 1
+        state.box_bottom = y - radius
+        state.box_right = x + radius
         state.box_left = x - radius
         
         subsector_index = point_in_subsector(self.map_data.c_mapdata, x, y)
@@ -101,13 +101,11 @@ class Walker(object):
         x2, y2 = self.map_data.blockmap.map_to_blockmap(state.box_right, state.box_top)
         
         linedefs, things = self.map_data.blockmap.get_region(x1, y1, x2, y2)
-        if len(linedefs) > 0:            
+        if len(linedefs) > 0:
             self.check_block_linedefs(state, linedefs)
         if len(things) > 0:
             self.check_block_things(state, things)
-            
-        collision = False
-        
+
         # Blocked by single-sided line or thing.
         if state.blockline == True or state.blockthing == True:
             collision = True
@@ -119,6 +117,9 @@ class Walker(object):
         # Z is below floor.
         elif z < state.floorz:
             collision = True
+            
+        else:
+            collision = False
             
         return collision, state
     
@@ -132,14 +133,14 @@ class Walker(object):
             ly1 = vertex1[VERTEX_Y]
             lx2 = vertex2[VERTEX_X]
             ly2 = vertex2[VERTEX_Y] 
-                                                                    
+            
+            # Ignore lines that do not intersect.                   
             if box_intersects_line(state.box_left, state.box_top, state.box_right, state.box_bottom, lx1, ly1, lx2, ly2) == False:
                 continue
             
             # Cannot pass through impassible flagged lines.
             if (linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_IMPASSIBLE) != 0:
                 state.blockline = True
-                continue
             
             # Test each sidedef on the line.
             # Frontside.

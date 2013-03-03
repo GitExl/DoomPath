@@ -1,4 +1,4 @@
-from doom import wad, mapdata, maprender
+from doom import wad, mapdata, maprender, trig
 from nav import navgrid
 import cProfile
 import camera
@@ -47,8 +47,8 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/eaeuro02.wad')
-        self.map_data = mapdata.MapData(wad_file, 'MAP01')
+        wad_file = wad.WADReader('test/doom.wad')
+        self.map_data = mapdata.MapData(wad_file, 'E1M2')
         
         # Load dataset for map.
         if self.map_data.is_hexen:
@@ -102,11 +102,11 @@ class Loop(object):
         
         while True:
             if self.mode == MODE_RENDER: 
-                self.nav_grid.create_walkable_elements(self.config, 1000)
+                self.nav_grid.create_walkable_elements(self.config, 50)
                 if len(self.nav_grid.element_tasks) == 0:
                     break
                 self.update_display()
-                pygame.image.save(self.screen, 'images/screen_{:06d}.png'.format(self.iteration))
+                #pygame.image.save(self.screen, 'images/screen_{:06d}.png'.format(self.iteration))
                 self.iteration += 1
             
             elif self.mode == MODE_INSPECT:
@@ -158,7 +158,7 @@ class Loop(object):
         
         self.screen.fill(COLOR_BACKGROUND)
         
-        #maprender.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        maprender.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         self.nav_grid.render_elements(self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         maprender.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
         maprender.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
@@ -173,13 +173,13 @@ class Loop(object):
         z = self.map_data.get_floor_z(self.mouse.map_x, self.mouse.map_y)
         radius = self.config.player_radius
         height = self.config.player_height
-        collision, state = self.nav_grid.walker.check_position(x, y, z, radius, height);
+        collision, state = self.nav_grid.walker.check_position(x, y, z, radius, height)
         
         if collision == False:
             color = COLOR_COLLISION_BOX
         else:
             color = COLOR_COLLISION_BOX_COLLIDE
-        
+
         x = self.mouse.map_x - self.config.player_radius
         y = self.mouse.map_y - self.config.player_radius
         x, y = self.camera.map_to_screen(x, y)

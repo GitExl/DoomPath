@@ -46,15 +46,14 @@ class BlockMap(object):
         while cy <= y2:
             cx = x1
             while cx <= x2:
+                index = cx + cy * self.width
                 if index >= 0 and index < blocks_len:
                     block = self.blocks[index]
                     linedefs.extend(block.linedefs)
                     things.extend(block.things)
                 
-                index += 1
                 cx += 1
-                
-            index += self.width - 1
+
             cy += 1
         
         return linedefs, things
