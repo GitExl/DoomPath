@@ -3,10 +3,10 @@ from nav.walker import Walker
 import pygame
 
 
-DIRECTION_NORTH = 0
-DIRECTION_EAST = 1
-DIRECTION_SOUTH = 2
-DIRECTION_WEST = 3
+DIRECTION_UP = 0
+DIRECTION_RIGHT = 1
+DIRECTION_DOWN = 2
+DIRECTION_LEFT = 3
 
 COLOR_ELEMENT_SPECIAL = pygame.Color(255, 0, 255, 255)
 COLOR_ELEMENT = pygame.Color(255, 255, 255, 255)
@@ -67,6 +67,7 @@ class NavGrid(object):
         
         self.element_size = config.player_radius
         self.element_height = config.player_height
+        self.element_stride = self.map_data.width / self.element_size
         
         self.walker = Walker(map_data, config)
         
@@ -75,12 +76,12 @@ class NavGrid(object):
         self.element_hash = {}
         
         self.colors = [None] * 256
-        for index in range(0, 255):
+        for index in range(0, 256):
             v = index / 255.0
             self.colors[index] = pygame.Color(int(COLOR_ELEMENT.r * v), int(COLOR_ELEMENT.g * v), int(COLOR_ELEMENT.b * v), 255)
         
         self.colors_special = [None] * 256
-        for index in range(0, 255):
+        for index in range(0, 256):
             v = index / 255.0
             self.colors_special[index] = pygame.Color(int(COLOR_ELEMENT_SPECIAL.r * v), int(COLOR_ELEMENT_SPECIAL.g * v), int(COLOR_ELEMENT_SPECIAL.b * v), 255)
         
@@ -102,7 +103,7 @@ class NavGrid(object):
     def add_element(self, x, y, z):
         element = NavElement(x, y, z)
 
-        element_hash = x + (y * (self.map_data.width / self.element_size))
+        element_hash = x + (y * self.element_stride)
         elements = self.element_hash.get(element_hash)
         if elements is None:
             elements = {}
@@ -115,7 +116,7 @@ class NavGrid(object):
     
     
     def get_element(self, x, y, z):
-        element_hash = x + (y * (self.map_data.width / self.element_size))
+        element_hash = x + (y * self.element_stride)
         elements = self.element_hash.get(element_hash)
         if elements is not None:
             return elements.get(z)
@@ -124,7 +125,7 @@ class NavGrid(object):
     
     
     def get_element_list(self, x, y):
-        element_hash = x + (y * (self.map_data.width / self.element_size))
+        element_hash = x + (y * self.element_stride)
         return self.element_hash.get(element_hash)
         
 
@@ -173,13 +174,13 @@ class NavGrid(object):
                 if element.elements[direction] is not None:
                     start = (rect.left + (self.element_size * camera.zoom) / 2, rect.top + (self.element_size * camera.zoom) / 2)
                     
-                    if direction == DIRECTION_NORTH:
+                    if direction == DIRECTION_UP:
                         end = (start[0], start[1] - (self.element_size * camera.zoom))
-                    elif direction == DIRECTION_EAST:
+                    elif direction == DIRECTION_RIGHT:
                         end = (start[0] + (self.element_size * camera.zoom), start[1])
-                    elif direction == DIRECTION_SOUTH:
+                    elif direction == DIRECTION_DOWN:
                         end = (start[0], start[1] + (self.element_size * camera.zoom))
-                    elif direction == DIRECTION_WEST:
+                    elif direction == DIRECTION_LEFT:
                         end = (start[0] - (self.element_size * camera.zoom), start[1])
                         
                     pygame.draw.line(surface, color, start, end, 1)
@@ -187,9 +188,9 @@ class NavGrid(object):
     
     def create_walkable_elements(self, config, iterations=-1):       
         iteration = 0
-        direction_range = range(0, 4)
+        direction_range = [DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT] 
         
-        while True:
+        while 1:
             iteration += 1
             if iterations != -1 and iteration >= iterations:
                 return
@@ -199,19 +200,19 @@ class NavGrid(object):
             element = self.element_tasks.pop()
             
             if len(self.elements) % 2500 == 0:
-                print '{} elements, {} tasks left...'.format(len(self.elements), len(self.element_tasks))
+                print '{} elements, {} tasks left, iteration {}...'.format(len(self.elements), len(self.element_tasks), iteration)
             
             for direction in direction_range:
-                if direction == DIRECTION_NORTH:
+                if direction == DIRECTION_UP:
                     x = element.x
                     y = element.y - 1
-                elif direction == DIRECTION_EAST:
+                elif direction == DIRECTION_RIGHT:
                     x = element.x + 1
                     y = element.y
-                elif direction == DIRECTION_SOUTH:
+                elif direction == DIRECTION_DOWN:
                     x = element.x
                     y = element.y + 1
-                elif direction == DIRECTION_WEST:
+                elif direction == DIRECTION_LEFT:
                     x = element.x - 1
                     y = element.y
                 z = element.z
@@ -268,13 +269,13 @@ class NavGrid(object):
         
         # Set origin element jumping flags.
         if jump == True:
-            if direction == DIRECTION_NORTH:
+            if direction == DIRECTION_UP:
                 element.flags |= FLAG_JUMP_NORTH
-            elif direction == DIRECTION_EAST:
+            elif direction == DIRECTION_RIGHT:
                 element.flags |= FLAG_JUMP_EAST
-            elif direction == DIRECTION_SOUTH:
+            elif direction == DIRECTION_DOWN:
                 element.flags |= FLAG_JUMP_SOUTH
-            elif direction == DIRECTION_WEST:
+            elif direction == DIRECTION_LEFT:
                 element.flags |= FLAG_JUMP_WEST
         
         # Drop to the lowest floor.

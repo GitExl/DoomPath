@@ -94,9 +94,7 @@ class BlockMap(object):
                 
             elif by == by2:
                 if bx > bx2:
-                    temp = bx
-                    bx = bx2
-                    bx2 = temp
+                    bx, bx2 = bx2, bx
                     
                 block = self.blocks[bx + by * self.width]
                 while (bx < bx2):
@@ -107,9 +105,7 @@ class BlockMap(object):
             
             elif bx == bx2:
                 if by > by2:
-                    temp = by
-                    by = by2
-                    by2 = temp
+                    by, by2 = by2, by
                     
                 block = self.blocks[bx + by * self.width]
                 while (by < by2):

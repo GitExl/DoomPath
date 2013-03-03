@@ -30,6 +30,28 @@ class PositionState(object):
         self.box_right = 0
 
 
+    def reset(self, x, y, z, radius, height):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.radius = radius
+        self.height = height
+        
+        self.floorz = -0x8000
+        self.ceilz = 0x8000
+        
+        self.blockline = False
+        self.blockthing = False
+        self.steep = False
+        self.moves = False
+        self.special_sector = None
+
+        self.box_top = y + radius
+        self.box_bottom = y - radius
+        self.box_right = x + radius
+        self.box_left = x - radius
+
+
 class Walker(object):
     
     def __init__(self, map_data, config):
@@ -70,40 +92,23 @@ class Walker(object):
         
     def check_position(self, x, y, z, radius, height):
         state = self.state
-        
-        state.x = x
-        state.y = y
-        state.z = z
-        state.radius = radius
-        state.height = height
-        
-        state.floorz = -0x8000
-        state.ceilz = 0x8000
-        
-        state.blockline = False
-        state.blockthing = False
-        state.steep = False
-        state.moves = False
-        state.special_sector = None
-
-        state.box_top = y + radius
-        state.box_bottom = y - radius
-        state.box_right = x + radius
-        state.box_left = x - radius
-        
+        state.reset(x, y, z, radius, height)
+                
         subsector_index = point_in_subsector(self.map_data.c_mapdata, x, y)
         state.sector_index = self.map_data.subsector_sectors[subsector_index]
         state.base_sector_index = state.sector_index
             
         self.check_sector_position(state)
-           
+        
         x1, y1 = self.map_data.blockmap.map_to_blockmap(state.box_left, state.box_bottom)
         x2, y2 = self.map_data.blockmap.map_to_blockmap(state.box_right, state.box_top)
         
         linedefs, things = self.map_data.blockmap.get_region(x1, y1, x2, y2)
         if len(linedefs) > 0:
+            linedefs = set(linedefs)
             self.check_block_linedefs(state, linedefs)
         if len(things) > 0:
+            things = set(things)
             self.check_block_things(state, things)
 
         # Blocked by single-sided line or thing.
