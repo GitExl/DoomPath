@@ -1,5 +1,6 @@
 from doom.mapenum import *
 from nav.walker import Walker
+import cPickle
 import pygame
 
 
@@ -7,6 +8,7 @@ DIRECTION_UP = 0
 DIRECTION_RIGHT = 1
 DIRECTION_DOWN = 2
 DIRECTION_LEFT = 3
+DIRECTION_RANGE = [DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT]
 
 COLOR_ELEMENT_SPECIAL = pygame.Color(255, 0, 255, 255)
 COLOR_ELEMENT = pygame.Color(255, 255, 255, 255)
@@ -42,21 +44,42 @@ reason_text = {
 
 
 class NavElement(object):
-    __slots__ = ('x', 'y', 'z', 'area', 'special_sector', 'flags', 'elements')
+    __slots__ = ('x', 'y', 'z', 'area', 'special_sector', 'flags', 'elements', 'index')
     
     
     def __init__(self, x, y, z):
         self.x = x
         self.y = y
         self.z = z
-        self.area = None
+        
         self.special_sector = -1
         self.flags = 0
+        
         self.elements = [None] * 4
+        self.area = None
+        
+        self.index = -1
         
         
     def __repr__(self):
         return 'element x {}, y {}, z {}, flags {}, sector {}'.format(self.x, self.y, round(self.z, 2), self.flags, self.special_sector)
+    
+    def __getstate__(self):
+        indices = [-1] * 4
+        for direction in DIRECTION_RANGE:
+            if self.elements[direction] is not None:
+                indices[direction] = self.elements[direction].index
+        
+        return [self.x, self.y, self.z, self.special_sector, self.flags, self.index, indices]
+    
+    def __setstate__(self, state):
+        self.x = state[0]
+        self.y = state[1]
+        self.z = state[2]
+        self.special_sector = state[3]
+        self.flags = state[4]
+        self.index = state[5]
+        self.elements = state[6]
         
 
 class NavGrid(object):
@@ -115,6 +138,41 @@ class NavGrid(object):
         return element
     
     
+    def write(self, filename):
+        print 'Assigning element indices...'
+        for index, element in enumerate(self.elements):
+            element.index = index
+        
+        print 'Writing grid...'
+        with open(filename, 'wb') as f:
+            cPickle.dump(self.elements, f)
+                
+                
+    def read(self, filename):
+        print 'Reading grid...'
+        with open(filename, 'rb') as f:
+            self.elements = cPickle.load(f)
+
+        # Set element references from stored indices.
+        print 'Rebuilding element references...'
+        for element in self.elements:
+            for direction in DIRECTION_RANGE:
+                if element.elements[direction] != -1:
+                    element.elements[direction] = self.elements[element.elements[direction]]
+                else:
+                    element.elements[direction] = None
+            
+        # Rebuild element_hash
+        print 'Rebuilding element hash table...'
+        for element in self.elements:
+            element_hash = element.x + (element.y * self.element_stride)
+            elements = self.element_hash.get(element_hash)
+            if elements is None:
+                elements = {}
+                self.element_hash[element_hash] = elements
+            elements[element.z] = element 
+            
+    
     def get_element(self, x, y, z):
         element_hash = x + (y * self.element_stride)
         elements = self.element_hash.get(element_hash)
@@ -170,7 +228,7 @@ class NavGrid(object):
 
             pygame.draw.rect(surface, color, rect, 1)
             
-            for direction in range(0, 4):
+            for direction in DIRECTION_RANGE:
                 if element.elements[direction] is not None:
                     start = (rect.left + (self.element_size * camera.zoom) / 2, rect.top + (self.element_size * camera.zoom) / 2)
                     
@@ -188,7 +246,7 @@ class NavGrid(object):
     
     def create_walkable_elements(self, config, iterations=-1):       
         iteration = 0
-        direction_range = [DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT] 
+        print 'Detecting walkable space...'
         
         while 1:
             iteration += 1
@@ -202,7 +260,7 @@ class NavGrid(object):
             if len(self.elements) % 2500 == 0:
                 print '{} elements, {} tasks left, iteration {}...'.format(len(self.elements), len(self.element_tasks), iteration)
             
-            for direction in direction_range:
+            for direction in DIRECTION_RANGE:
                 if direction == DIRECTION_UP:
                     x = element.x
                     y = element.y - 1
@@ -225,7 +283,7 @@ class NavGrid(object):
                         continue
                     
                 element.elements[direction] = new_element
-                
+
                 
     def test_element(self, x, y, z, direction, element, new_element):
         jump = False

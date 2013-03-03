@@ -1,6 +1,5 @@
-from doom import wad, mapdata, maprender, trig
+from doom import wad, mapdata, maprender
 from nav import navgrid
-import cProfile
 import camera
 import config
 import pygame
@@ -40,6 +39,7 @@ class Loop(object):
         
         self.iteration = 0
         self.mode = MODE_INSPECT
+        self.generate_grid = False
         
         self.mouse = Mouse()
         self.keys = [False] * 512
@@ -47,8 +47,8 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/doom.wad')
-        self.map_data = mapdata.MapData(wad_file, 'E4M9')
+        wad_file = wad.WADReader('test/doom2.wad')
+        self.map_data = mapdata.MapData(wad_file, 'MAP11')
         
         # Load dataset for map.
         if self.map_data.is_hexen:
@@ -87,8 +87,11 @@ class Loop(object):
         print 'Added {} starting elements.'.format(len(start_things))
         
         if self.mode == MODE_INSPECT:
-            print 'Detecting walkable space...'
-            self.nav_grid.create_walkable_elements(self.config)
+            if self.generate_grid == True:
+                self.nav_grid.create_walkable_elements(self.config)
+                self.nav_grid.write('test/nav.bin')
+            else:
+                self.nav_grid.read('test/nav.bin')
 
         print 'Creating display...'        
         pygame.init()
@@ -224,5 +227,5 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    cProfile.run('loop.loop_init()')
+    loop.loop_init()
     loop.loop_start()
