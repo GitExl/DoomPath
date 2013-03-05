@@ -1,4 +1,4 @@
-from nav.navmesh import SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM, SIDE_LEFT
+from nav.navenum import *
 
 
 class NavArea(object):
@@ -30,6 +30,7 @@ class NavArea(object):
             return self.x1, self.y1, self.x1, self.y2
         
         return None
+    
     
     def __repr__(self):
         return 'x1 {}, y1 {}, x2 {}, y2 {}, z {}, sector {}, width {}, height {}'.format(self.x1, self.y1, self.x2, self.y2, self.z, self.sector, self.x2 - self.x1, self.y2 - self.y1) 

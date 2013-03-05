@@ -1,16 +1,6 @@
+from nav.navenum import *
 from nav.navarea import NavArea
 import pygame
-
-
-AREA_SIZE_MAX = 256
-AREA_SIZE_RATIO = 192
-
-SIDE_TOP = 0
-SIDE_RIGHT = 1
-SIDE_BOTTOM = 2
-SIDE_LEFT = 3
-SIDE_RANGE = [SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM, SIDE_LEFT]
-SIDE_RANGE_OPPOSITE = [SIDE_BOTTOM, SIDE_LEFT, SIDE_TOP, SIDE_RIGHT]
 
 
 class NavMesh(object):

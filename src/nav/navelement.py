@@ -1,4 +1,4 @@
-from nav.navgrid import DIRECTION_RANGE
+from nav.navenum import *
 
 
 class NavElement(object):
