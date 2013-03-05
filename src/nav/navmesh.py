@@ -60,6 +60,7 @@ class NavMesh(object):
         for side in SIDE_RANGE:
             x1, y1, x2, y2 = area.get_side(side)
             
+            # Select a grid element on the current side.
             if side == SIDE_TOP:
                 ex, ey = x1, y1 - self.nav_grid.element_size
             elif side == SIDE_RIGHT:
@@ -74,57 +75,52 @@ class NavMesh(object):
             if element is None:
                 continue
             
+            # Select the navigation area that the selected element is a part of.
+            # Ignore ourselves as a merge candidate.
             merge_area = element.area
             if merge_area == area:
                 continue
             
+            # Ignore areas that do not have similar contents.
             if area.elements[0] != merge_area.elements[0]:
                 continue
             
+            # See if the two areas have matching opposite sides.
             merge_x1, merge_y1, merge_x2, merge_y2 = merge_area.get_side(SIDE_RANGE_OPPOSITE[side])
             if x1 != merge_x1 or y1 != merge_y1 or x2 != merge_x2 or y2 != merge_y2:
                 continue
             
+            # Get the size of the new merged area.
             if side == SIDE_TOP:
                 width = area.x2 - area.x1
                 height = area.y2 - merge_area.y1 
-                if height > AREA_SIZE_MAX:
-                    continue
-                if abs(width - height) > AREA_SIZE_RATIO:
-                    continue
-                                
-                merge_area.y2 = area.y2
-                
             elif side == SIDE_RIGHT:
                 width = merge_area.x2 - area.x1
                 height = area.y2 - area.y1
-                if width > AREA_SIZE_MAX:
-                    continue
-                if abs(width - height) > AREA_SIZE_RATIO:
-                    continue
-                                
-                merge_area.x1 = area.x1
-                
             elif side == SIDE_BOTTOM:
-                width = area.x2 - area.x1 
+                width = area.x2 - area.x1
                 height = merge_area.y2 - area.y1
-                if height > AREA_SIZE_MAX:
-                    continue
-                if abs(width - height) > AREA_SIZE_RATIO:
-                    continue
-                
-                merge_area.y1 = area.y1
-                
             elif side == SIDE_LEFT:
                 width = area.x2 - merge_area.x1
                 height = area.y2 - area.y1
-                if width > AREA_SIZE_MAX:
-                    continue
-                if abs(width - height) > AREA_SIZE_RATIO:
-                    continue
                 
+            # Abort merging if the area dimensions are not good.
+            if width > AREA_SIZE_MAX or height > AREA_SIZE_MAX:
+                continue
+            if abs(width - height) > AREA_SIZE_RATIO:
+                continue
+            
+            # Merge the area surface.
+            if side == SIDE_TOP:
+                merge_area.y2 = area.y2
+            elif side == SIDE_RIGHT:
+                merge_area.x1 = area.x1
+            elif side == SIDE_BOTTOM:
+                merge_area.y1 = area.y1
+            elif side == SIDE_LEFT:
                 merge_area.x2 = area.x2
                 
+            # Merge the area elements.
             merge_area.elements.extend(area.elements)
             for element in area.elements:
                 element.area = merge_area
