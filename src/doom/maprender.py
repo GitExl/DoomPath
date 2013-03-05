@@ -89,4 +89,4 @@ def render_linedefs(map_data, surface, camera, x, y, sector_mark):
         center_x, center_y = map_data.get_sector_center(sector_mark)
         center_x, center_y = camera.map_to_screen(center_x, center_y)
         
-        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_x), int(center_y)), int(10 * camera.zoom))
+        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_x), int(center_y)), int(5 * camera.zoom))
