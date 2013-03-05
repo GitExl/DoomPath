@@ -99,7 +99,7 @@ class NavGrid(object):
         self.config = config
         self.map_data = map_data
         
-        self.element_size = config.player_radius / 2
+        self.element_size = config.player_radius
         self.element_height = config.player_height
         
         self.width = self.map_data.width / self.element_size

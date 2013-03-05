@@ -1,7 +1,8 @@
 import pygame
 
 
-AREA_SIZE_MAX = 20
+AREA_SIZE_MAX = 256
+AREA_SIZE_RATIO = 64
 
 SIDE_TOP = 0
 SIDE_RIGHT = 1
@@ -27,31 +28,18 @@ class NavArea(object):
 
     def get_side(self, side):
         if side == SIDE_TOP:
-            x1 = self.x1
-            y1 = self.y1
-            x2 = self.x2
-            y2 = self.y1
+            return self.x1, self.y1, self.x2, self.y1
         
         elif side == SIDE_RIGHT:
-            x1 = self.x2
-            y1 = self.y1
-            x2 = self.x2
-            y2 = self.y2
+            return self.x2, self.y1, self.x2, self.y2
             
         elif side == SIDE_BOTTOM:
-            x1 = self.x1
-            y1 = self.y2
-            x2 = self.x2
-            y2 = self.y2
+            return self.x1, self.y2, self.x2, self.y2
             
         elif side == SIDE_LEFT:
-            x1 = self.x1
-            y1 = self.y1
-            x2 = self.x1
-            y2 = self.y2
-            
-        return x1, y1, x2, y2
-    
+            return self.x1, self.y1, self.x1, self.y2
+        
+        return None
     
     def __repr__(self):
         return 'x1 {}, y1 {}, x2 {}, y2 {}, z {}, sector {}, width {}, height {}'.format(self.x1, self.y1, self.x2, self.y2, self.z, self.sector, self.x2 - self.x1, self.y2 - self.y1) 
@@ -139,12 +127,43 @@ class NavMesh(object):
                 continue
             
             if side == SIDE_TOP:
+                width = area.x2 - area.x1
+                height = area.y2 - merge_area.y1 
+                if height > AREA_SIZE_MAX:
+                    continue
+                if abs(width - height) > AREA_SIZE_RATIO:
+                    continue
+                                
                 merge_area.y2 = area.y2
+                
             elif side == SIDE_RIGHT:
+                width = merge_area.x2 - area.x1
+                height = area.y2 - area.y1
+                if width > AREA_SIZE_MAX:
+                    continue
+                if abs(width - height) > AREA_SIZE_RATIO:
+                    continue
+                                
                 merge_area.x1 = area.x1
+                
             elif side == SIDE_BOTTOM:
+                width = area.x2 - area.x1 
+                height = merge_area.y2 - area.y1
+                if height > AREA_SIZE_MAX:
+                    continue
+                if abs(width - height) > AREA_SIZE_RATIO:
+                    continue
+                
                 merge_area.y1 = area.y1
+                
             elif side == SIDE_LEFT:
+                width = area.x2 - merge_area.x1
+                height = area.y2 - area.y1
+                if width > AREA_SIZE_MAX:
+                    continue
+                if abs(width - height) > AREA_SIZE_RATIO:
+                    continue
+                
                 merge_area.x2 = area.x2
                 
             merge_area.elements.extend(area.elements)

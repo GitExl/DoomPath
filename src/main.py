@@ -43,7 +43,7 @@ class Loop(object):
         
         self.iteration = 0
         self.mode = MODE_INSPECT
-        self.generate_grid = False
+        self.generate_grid = True
         
         self.mouse = Mouse()
         self.keys = [False] * 512
@@ -51,8 +51,8 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/doom2.wad')
-        self.map_data = mapdata.MapData(wad_file, 'MAP11')
+        wad_file = wad.WADReader('test/mega_map07.wad')
+        self.map_data = mapdata.MapData(wad_file, 'MAP07')
         
         # Load dataset for map.
         if self.map_data.is_hexen:
