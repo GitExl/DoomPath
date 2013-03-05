@@ -2,7 +2,7 @@ import pygame
 
 
 AREA_SIZE_MAX = 256
-AREA_SIZE_RATIO = 64
+AREA_SIZE_RATIO = 192
 
 SIDE_TOP = 0
 SIDE_RIGHT = 1
@@ -13,7 +13,7 @@ SIDE_RANGE_OPPOSITE = [SIDE_BOTTOM, SIDE_LEFT, SIDE_TOP, SIDE_RIGHT]
 
 
 class NavArea(object):
-    __slots__ = ('x1', 'y1', 'x2', 'y2', 'z', 'sector', 'elements')
+    __slots__ = ('x1', 'y1', 'x2', 'y2', 'z', 'sector', 'flags', 'elements')
 
 
     def __init__(self, x1, y1, x2, y2, z):
@@ -23,6 +23,7 @@ class NavArea(object):
         self.y2 = y2
         self.z = z
         self.sector = -1
+        self.flags = 0
         self.elements = []
 
 
@@ -72,6 +73,7 @@ class NavMesh(object):
                         
                         area = self.add_area(nav_grid, x, y, element.z, width, height)
                         area.sector = element.special_sector
+                        area.flags = element.flags
                         self.areas.append(area)
             
             x += 1
