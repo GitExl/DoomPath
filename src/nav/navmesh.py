@@ -8,10 +8,16 @@ class NavMesh(object):
     def __init__(self):
         self.areas = []
         self.nav_grid = None
+        
+        self.max_elements = 0
+        self.max_ratio = 0
 
 
     def create_from_grid(self, nav_grid):
         self.nav_grid = nav_grid
+        
+        self.max_size_elements = AREA_SIZE_MAX / self.nav_grid.element_size
+        self.max_ratio_elements = AREA_SIZE_RATIO / self.nav_grid.element_size
         
         left = nav_grid.map_data.min_x / nav_grid.element_size
         top = nav_grid.map_data.min_y / nav_grid.element_size
@@ -22,18 +28,21 @@ class NavMesh(object):
         x = left
         y = top
         while 1:
+            move_x = 1
+            
             elements = nav_grid.get_element_list(x, y)
             if elements is not None:
                 for element in elements.itervalues():
                     if element.area is None:
-                        width, height = self.find_largest_area_square(element)
+                        width, height = self.find_largest_area(element)
                         
                         area = self.add_area(nav_grid, x, y, element.z, width, height)
                         area.sector = element.special_sector
                         area.flags = element.flags
                         self.areas.append(area)
+                        move_x = max(move_x, (area.x2 - area.x1) / nav_grid.element_size)
             
-            x += 1
+            x += move_x
             if x >= right:
                 x = left
                 y += 1
@@ -161,10 +170,10 @@ class NavMesh(object):
         width = 1
         height = 1
         area_amount = 1
-        max_height = AREA_SIZE_MAX
+        max_height = self.max_size_elements
         
         # Find the largest area size.
-        for cx in range(x, x + AREA_SIZE_MAX):
+        for cx in range(x, x + self.max_size_elements):
             for cy in range(y, y + max_height):
                 add_element = self.nav_grid.get_element(cx, cy, z)
                 if add_element is None or add_element.area is not None or add_element != element:
@@ -176,6 +185,12 @@ class NavMesh(object):
                     width = cx - x + 1
                     height = cy - y + 1
                     area_amount = new_area_amount
+                    
+        if abs(width - height) > self.max_ratio_elements:
+            if width > height:
+                width = height
+            elif height > width:
+                height = width
         
         return width, height
     

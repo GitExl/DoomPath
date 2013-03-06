@@ -51,8 +51,8 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/av.wad')
-        self.map_data = mapdata.MapData(wad_file, 'MAP26')
+        wad_file = wad.WADReader('test/eaeuro02.wad')
+        self.map_data = mapdata.MapData(wad_file, 'MAP01')
         
         # Load dataset for map.
         if self.map_data.is_hexen:
