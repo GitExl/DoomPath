@@ -15,41 +15,16 @@ class NavMesh(object):
 
     def create_from_grid(self, nav_grid):
         self.nav_grid = nav_grid
-        
         self.max_size_elements = AREA_SIZE_MAX / self.nav_grid.element_size
-        self.max_ratio_elements = AREA_SIZE_RATIO / self.nav_grid.element_size
         
         left = nav_grid.map_data.min_x / nav_grid.element_size
         top = nav_grid.map_data.min_y / nav_grid.element_size
         right = left + nav_grid.width
         bottom = top + nav_grid.height
         
-        # Find square areas with a minimum size of 2x2.
-        x = left
-        y = top
-        while 1:
-            move_x = 1
-            
-            elements = nav_grid.get_element_list(x, y)
-            if elements is not None:
-                for element in elements.itervalues():
-                    if element.area is None:
-                        width, height = self.find_largest_area(element)
-                        
-                        area = self.add_area(nav_grid, x, y, element.z, width, height)
-                        area.sector = element.special_sector
-                        area.flags = element.flags
-                        self.areas.append(area)
-                        move_x = max(move_x, (area.x2 - area.x1) / nav_grid.element_size)
-            
-            x += move_x
-            if x >= right:
-                x = left
-                y += 1
-                if y >= bottom:
-                    break
-        
-        print 'Created {} navigation areas.'.format(len(self.areas))
+        for min_side in range(int(self.max_size_elements / 6), -1, -1):
+            print 'Size iteration {}...'.format(min_side)
+            self.generate_iteration(left, top, right, bottom, min_side)
         
         print 'Merging...'
         while 1:
@@ -63,6 +38,39 @@ class NavMesh(object):
             print 'Merged down to {} navigation areas.'.format(new_len)
 
         return True
+    
+    
+    def generate_iteration(self, left, top, right, bottom, min_side):
+        x = left
+        y = top
+        iteration = 0
+        
+        while 1:
+            iteration += 1
+            if iteration % 25000 == 0:
+                print '{} navigation areas in iteration {}...'.format(len(self.areas), iteration)
+            
+            move_x = 1
+            elements = self.nav_grid.get_element_list(x, y)
+            if elements is not None:
+                for element in elements.itervalues():
+                    if element.area is None:
+                        width, height = self.find_largest_area(element, min_side)
+                        if width is None:
+                            continue
+                        
+                        area = self.add_area(self.nav_grid, x, y, element.z, width, height)
+                        area.sector = element.special_sector
+                        area.flags = element.flags
+                        self.areas.append(area)
+                        move_x = max(move_x, (area.x2 - area.x1) / self.nav_grid.element_size)
+            
+            x += move_x
+            if x >= right:
+                x = left
+                y += 1
+                if y >= bottom:
+                    break
 
     
     def area_merge_filter(self, area):
@@ -87,7 +95,7 @@ class NavMesh(object):
             # Select the navigation area that the selected element is a part of.
             # Ignore ourselves as a merge candidate.
             merge_area = element.area
-            if merge_area == area:
+            if merge_area is None or merge_area == area:
                 continue
             
             # Ignore areas that do not have similar contents.
@@ -115,8 +123,6 @@ class NavMesh(object):
                 
             # Abort merging if the area dimensions are not good.
             if width > AREA_SIZE_MAX or height > AREA_SIZE_MAX:
-                continue
-            if abs(width - height) > AREA_SIZE_RATIO:
                 continue
             
             # Merge the area surface.
@@ -162,7 +168,7 @@ class NavMesh(object):
         return area
                 
     
-    def find_largest_area(self, element):
+    def find_largest_area(self, element, min_side):
         x = element.x
         y = element.y
         z = element.z
@@ -172,7 +178,7 @@ class NavMesh(object):
         area_amount = 1
         max_height = self.max_size_elements
         
-        # Find the largest area size.
+        # Find the largest area size.        
         for cx in range(x, x + self.max_size_elements):
             for cy in range(y, y + max_height):
                 add_element = self.nav_grid.get_element(cx, cy, z)
@@ -186,46 +192,9 @@ class NavMesh(object):
                     height = cy - y + 1
                     area_amount = new_area_amount
                     
-        if abs(width - height) > self.max_ratio_elements:
-            if width > height:
-                width = height
-            elif height > width:
-                height = width
-        
-        return width, height
-    
-    
-    def find_largest_area_square(self, element):
-        x = element.x
-        y = element.y
-        z = element.z
-
-        for size in range(2, AREA_SIZE_MAX + 1):
-            
-            valid = True
-            
-            # Test bottom row
-            cy = y + size
-            for cx in range(x, x + size):
-                add_element = self.nav_grid.get_element(cx, cy, z)
-                if add_element is None or add_element.area is not None or add_element != element:
-                    valid = False
-                    break
-                
-            # Test right column
-            cx = x + size
-            for cy in range(y, y + size):
-                add_element = self.nav_grid.get_element(cx, cy, z)
-                if add_element is None or add_element.area is not None or add_element != element:
-                    valid = False
-                    break
-            
-            if valid == False:
-                break
-            
-        width = size - 1
-        height = size - 1
-    
+        if width <= min_side or height <= min_side:
+            return None, None
+       
         return width, height
     
     

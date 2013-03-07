@@ -43,7 +43,7 @@ class Loop(object):
         
         self.iteration = 0
         self.mode = MODE_INSPECT
-        self.generate_grid = True
+        self.generate_grid = False
         
         self.mouse = Mouse()
         self.keys = [False] * 512
