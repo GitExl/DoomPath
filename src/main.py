@@ -43,7 +43,7 @@ class Loop(object):
         
         self.iteration = 0
         self.mode = MODE_INSPECT
-        self.generate_grid = False
+        self.generate_grid = True
         
         self.mouse = Mouse()
         self.keys = [False] * 512
@@ -51,8 +51,8 @@ class Loop(object):
         
     def loop_init(self):
         print 'Loading map...'
-        wad_file = wad.WADReader('test/eaeuro02.wad')
-        self.map_data = mapdata.MapData(wad_file, 'MAP01')
+        wad_file = wad.WADReader('test/doom1.wad')
+        self.map_data = mapdata.MapData(wad_file, 'E1M2')
         
         # Load dataset for map.
         if self.map_data.is_hexen:
@@ -102,7 +102,7 @@ class Loop(object):
         if self.mode == MODE_INSPECT:
             self.nav_mesh.create_from_grid(self.nav_grid)
 
-        print 'Creating display...'        
+        print 'Creating display...'
         pygame.init()
         self.screen = pygame.display.set_mode((1280, 720))
         self.camera = camera.Camera(0, 0, 1280, 720, 1.0)
@@ -211,7 +211,7 @@ class Loop(object):
         text = 'floor z: {}, ceil z: {}, block line: {}, block thing: {}, special sector {}'.format(round(state.floorz, 2), round(state.ceilz, 2), state.blockline, state.blockthing, state.special_sector)
         self.render_text(text, 4, 20)
         
-        x, y, _ = self.nav_grid.map_to_element(self.mouse.map_x, self.mouse.map_y, z)
+        x, y = self.nav_grid.map_to_element(self.mouse.map_x, self.mouse.map_y)
         elements = self.nav_grid.get_element_list(x, y)
         if elements is not None:
             x = 4
@@ -241,6 +241,6 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    #cProfile.run('loop.loop_init()', sort=1)
-    loop.loop_init()
+    cProfile.run('loop.loop_init()', sort=1)
+    #loop.loop_init()
     loop.loop_start()

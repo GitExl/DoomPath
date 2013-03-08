@@ -39,7 +39,7 @@ class NavGrid(object):
         self.config = config
         self.map_data = map_data
         
-        self.element_size = config.player_radius
+        self.element_size = config.player_radius / 2
         self.element_height = config.player_height
         
         self.width = self.map_data.width / self.element_size
@@ -63,8 +63,8 @@ class NavGrid(object):
         
         
     def add_walkable_element(self, x, y, z):
-        ex, ey, ez = self.map_to_element(x, y, z)
-        element = self.add_element(ex, ey, ez)
+        ex, ey = self.map_to_element(x, y)
+        element = self.add_element(ex, ey, z)
         
         sector_index = self.map_data.get_sector(x, y)
         self.set_element_extra(sector_index, element)
@@ -140,12 +140,12 @@ class NavGrid(object):
         return self.element_hash.get(element_hash)
         
 
-    def map_to_element(self, x, y, z):
-        return (x / self.element_size) + 1, (y / self.element_size) + 1, z
+    def map_to_element(self, x, y):
+        return (x / self.element_size) + 1, (y / self.element_size) + 1
     
     
-    def element_to_map(self, x, y, z):
-        return (x * self.element_size) - (self.element_size / 2), (y * self.element_size) - (self.element_size / 2), z
+    def element_to_map(self, x, y):
+        return (x * self.element_size) - (self.element_size / 2), (y * self.element_size) - (self.element_size / 2)
 
     
     def render_elements(self, surface, camera, sx, sy):        
@@ -167,7 +167,7 @@ class NavGrid(object):
             pygame.draw.rect(surface, color, rect, 1)
         
         rect = pygame.Rect((0, 0), (self.element_size * camera.zoom, self.element_size * camera.zoom))
-        sx, sy, _ = self.map_to_element(sx, sy, 0)
+        sx, sy = self.map_to_element(sx, sy)
         element_hash = sx + (sy * (self.map_data.width / self.element_size))
         element = self.element_hash.get(element_hash)
         if element is not None:
@@ -241,12 +241,12 @@ class NavGrid(object):
         jump = False
 
         # See if an adjoining element can be placed.
-        map_x, map_y, map_z = self.element_to_map(x, y, z)
+        map_x, map_y = self.element_to_map(x, y)
         if map_x < self.map_data.min_x or map_x > self.map_data.max_x or map_y < self.map_data.min_y or map_y > self.map_data.max_y:
             print 'Grid leak at {}, {}'.format(map_x, map_y)
             return REASON_LEAK, None
         
-        collision, state = self.walker.check_position(map_x, map_y, map_z, self.element_size, self.element_height)
+        collision, state = self.walker.check_position(map_x, map_y, z, self.element_size, self.element_height)
         
         if state.special_sector is not None:
             sector_extra = self.map_data.sector_extra[state.special_sector]

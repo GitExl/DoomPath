@@ -22,7 +22,7 @@ class NavMesh(object):
         right = left + nav_grid.width
         bottom = top + nav_grid.height
         
-        for min_side in range(int(self.max_size_elements / 6), -1, -1):
+        for min_side in range(int(self.max_size_elements / 6), 0, -1):
             print 'Size iteration {}...'.format(min_side)
             self.generate_iteration(left, top, right, bottom, min_side)
         
@@ -87,8 +87,8 @@ class NavMesh(object):
             elif side == SIDE_LEFT:
                 ex, ey = x1 - self.nav_grid.element_size, y1
             
-            ex, ey, ez = self.nav_grid.map_to_element(ex, ey, area.z)
-            element = self.nav_grid.get_element(ex, ey, ez)
+            ex, ey = self.nav_grid.map_to_element(ex, ey)
+            element = self.nav_grid.get_element(ex, ey, area.z)
             if element is None:
                 continue
             
@@ -147,8 +147,8 @@ class NavMesh(object):
     
     def add_area(self, nav_grid, x, y, z, width, height):
         # Create a new nav area of the found width and height.
-        ex1, ey1, _ = nav_grid.element_to_map(x, y, z)
-        ex2, ey2, _ = nav_grid.element_to_map(x + width, y + height, z)
+        ex1, ey1 = nav_grid.element_to_map(x, y)
+        ex2, ey2 = nav_grid.element_to_map(x + width, y + height)
         ex1 -= (nav_grid.element_size / 2)
         ey1 -= (nav_grid.element_size / 2)
         ex2 -= (nav_grid.element_size / 2)
@@ -166,7 +166,7 @@ class NavMesh(object):
                 area.elements.append(add_element)
         
         return area
-                
+    
     
     def find_largest_area(self, element, min_side):
         x = element.x
@@ -176,11 +176,13 @@ class NavMesh(object):
         width = 1
         height = 1
         area_amount = 1
-        max_height = self.max_size_elements
+        max_height = min_side
         
-        # Find the largest area size.        
-        for cx in range(x, x + self.max_size_elements):
-            for cy in range(y, y + max_height):
+        cx = x
+        while cx < x + min_side:
+            
+            cy = y
+            while cy < y + max_height:
                 add_element = self.nav_grid.get_element(cx, cy, z)
                 if add_element is None or add_element.area is not None or add_element != element:
                     max_height = cy - y
@@ -191,8 +193,12 @@ class NavMesh(object):
                     width = cx - x + 1
                     height = cy - y + 1
                     area_amount = new_area_amount
-                    
-        if width <= min_side or height <= min_side:
+                
+                cy += 1
+            
+            cx += 1
+                 
+        if width < min_side or height < min_side:
             return None, None
        
         return width, height
