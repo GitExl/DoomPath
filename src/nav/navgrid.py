@@ -153,7 +153,7 @@ class NavGrid(object):
         z_mod = 255.0 / self.map_data.depth
         
         for element in self.elements:
-            x, y, _ = self.element_to_map(element.x, element.y, element.z)
+            x, y = self.element_to_map(element.x, element.y)
             x, y = camera.map_to_screen(x, y)
             rect.top = y - (self.element_size / 2) * camera.zoom
             rect.left = x - (self.element_size / 2) * camera.zoom
@@ -174,7 +174,7 @@ class NavGrid(object):
             element = element[element.keys()[0]]
 
             color = COLOR_ELEMENT_HIGHLIGHT
-            x, y, _ = self.element_to_map(element.x, element.y, element.z)
+            x, y = self.element_to_map(element.x, element.y)
             x, y = camera.map_to_screen(x, y)
             rect.top = y - (self.element_size / 2) * camera.zoom
             rect.left = x - (self.element_size / 2) * camera.zoom
@@ -305,6 +305,9 @@ class NavGrid(object):
             new_element = self.add_element(x, y, z)
             if state.special_sector is not None:
                 self.set_element_extra(state.special_sector, new_element)
+                
+            if state.floor_plane is not None:
+                new_element.plane = state.floor_plane
                 
             if state.moves == True:
                 new_element.special_sector = state.special_sector

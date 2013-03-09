@@ -3,6 +3,10 @@ from nav.navarea import NavArea
 import pygame
 
 
+COLOR_FILL = pygame.Color(15, 15, 15, 255)
+COLOR_BORDER = pygame.Color(127, 63, 0, 255)
+
+
 class NavMesh(object):
     
     def __init__(self):
@@ -47,7 +51,7 @@ class NavMesh(object):
         
         while 1:
             iteration += 1
-            if iteration % 25000 == 0:
+            if iteration % 40000 == 0:
                 print '{} navigation areas in iteration {}...'.format(len(self.areas), iteration)
             
             move_x = 1
@@ -59,9 +63,10 @@ class NavMesh(object):
                         if width is None:
                             continue
                         
-                        area = self.add_area(self.nav_grid, x, y, element.z, width, height)
+                        area = self.add_area(element, width, height)
                         area.sector = element.special_sector
                         area.flags = element.flags
+                        area.plane = element.plane
                         self.areas.append(area)
                         move_x = max(move_x, (area.x2 - area.x1) / self.nav_grid.element_size)
             
@@ -99,7 +104,7 @@ class NavMesh(object):
                 continue
             
             # Ignore areas that do not have similar contents.
-            if area.elements[0] != merge_area.elements[0]:
+            if not (area.elements[0] == merge_area.elements[0]):
                 continue
             
             # See if the two areas have matching opposite sides.
@@ -145,69 +150,74 @@ class NavMesh(object):
         return True
 
     
-    def add_area(self, nav_grid, x, y, z, width, height):
+    def add_area(self, element, width, height):
         # Create a new nav area of the found width and height.
-        ex1, ey1 = nav_grid.element_to_map(x, y)
-        ex2, ey2 = nav_grid.element_to_map(x + width, y + height)
-        ex1 -= (nav_grid.element_size / 2)
-        ey1 -= (nav_grid.element_size / 2)
-        ex2 -= (nav_grid.element_size / 2)
-        ey2 -= (nav_grid.element_size / 2)
+        ex1, ey1 = self.nav_grid.element_to_map(element.x, element.y)
+        ex2, ey2 = self.nav_grid.element_to_map(element.x + width, element.y + height)
+        ex1 -= (self.nav_grid.element_size / 2)
+        ey1 -= (self.nav_grid.element_size / 2)
+        ex2 -= (self.nav_grid.element_size / 2)
+        ey2 -= (self.nav_grid.element_size / 2)
 
-        area = NavArea(ex1, ey1, ex2, ey2, z)
+        area = NavArea(ex1, ey1, ex2, ey2, element.z)
         
         # Assign this area to all the elements in it.
-        for cx in range(x, x + width):
-            for cy in range(y, y + height):
-                add_element = nav_grid.get_element(cx, cy, z)
-                if add_element is None:
-                    continue
-                add_element.area = area
-                area.elements.append(add_element)
+        xelement = element
+        for _ in range(0, width):
+            
+            yelement = xelement
+            for _ in range(0, height):
+                yelement.area = area
+                area.elements.append(yelement)
+                
+                yelement = yelement.elements[DIRECTION_DOWN]
+            
+            xelement = xelement.elements[DIRECTION_RIGHT]
         
         return area
     
     
-    def find_largest_area(self, element, min_side):
+    def find_largest_area(self, element, size):
         x = element.x
         y = element.y
-        z = element.z
         
         width = 1
         height = 1
         area_amount = 1
-        max_height = min_side
+        max_height = size
         
+        xelement = element        
         cx = x
-        while cx < x + min_side:
+        while cx < x + size:
             
+            yelement = xelement
             cy = y
             while cy < y + max_height:
-                add_element = self.nav_grid.get_element(cx, cy, z)
-                if add_element is None or add_element.area is not None or add_element != element:
+                if yelement is None or yelement.area is not None or (not yelement == element):
                     max_height = cy - y
                     break
                 
-                new_area_amount = ((cx - x) + 1) * ((cy - y) + 1)
+                new_area_amount = (cx - x + 1) * (cy - y + 1)
                 if new_area_amount > area_amount:
                     width = cx - x + 1
                     height = cy - y + 1
                     area_amount = new_area_amount
                 
                 cy += 1
-            
+                yelement = yelement.elements[DIRECTION_DOWN]
+                
             cx += 1
+            xelement = xelement.elements[DIRECTION_RIGHT]
+            if xelement is None:
+                break
                  
-        if width < min_side or height < min_side:
+        if width < size or height < size:
             return None, None
        
         return width, height
     
     
     def render(self, surface, camera):
-        color_fill = pygame.Color(15, 15, 15, 255)
-        color_border = pygame.Color(127, 63, 0, 255)
-        
         for area in self.areas:
             x, y = camera.map_to_screen(area.x1, area.y1)
             width, height = ((area.x2 - area.x1) * camera.zoom, (area.y2 - area.y1) * camera.zoom)
@@ -233,5 +243,5 @@ class NavMesh(object):
             
             rect = pygame.Rect(x, y, width, height)
             
-            surface.fill(color_fill, rect, special_flags=pygame.BLEND_SUB)
-            pygame.draw.rect(surface, color_border, rect, 1)
+            surface.fill(COLOR_FILL, rect, special_flags=pygame.BLEND_SUB)
+            pygame.draw.rect(surface, COLOR_BORDER, rect, 1)

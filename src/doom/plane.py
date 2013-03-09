@@ -19,8 +19,10 @@ class Plane(object):
         self.d = -self.d
         self.invc = -self.invc
         
+        
     def get_z(self, x, y):       
-        return -(self.invc * (self.a * x + self.b * y + self.d));
+        return -(self.invc * (self.a * x + self.b * y + self.d))
+
 
 
 def plane_setup(map_data, refsector_index, refsector_lines, refline, floor):

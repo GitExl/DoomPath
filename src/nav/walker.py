@@ -23,6 +23,7 @@ class PositionState(object):
         self.moves = False
         self.sector_index = 0
         self.base_sector_index = 0
+        self.floor_plane = None
         
         self.box_top = 0
         self.box_left = 0
@@ -45,6 +46,7 @@ class PositionState(object):
         self.steep = False
         self.moves = False
         self.special_sector = None
+        self.floor_plane = None
 
         self.box_top = y + radius
         self.box_bottom = y - radius
@@ -271,6 +273,10 @@ class Walker(object):
         floor_extra = self.map_data.sector_extra[floor_sector_index]
         if sector_floor_z >= state.floorz and floor_extra.is_special == True:
             state.special_sector = floor_sector_index
+        
+        # Keep floor planes.
+        if floor_sector_index == state.base_sector_index and floor_extra.floor_plane is not None:
+            state.floor_plane = floor_extra.floor_plane
             
         # Detect any moving sectors.
         state.moves = floor_extra.moves or state.moves
