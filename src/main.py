@@ -1,10 +1,11 @@
-from doom import wad, mapdata, maprender
+from doom import wad, mapdata
 from nav import navgrid
 from nav.navmesh import NavMesh
 import cProfile
 import camera
 import config
 import pygame
+import render
 
 
 COLOR_BACKGROUND = pygame.Color(0, 31, 63, 255)
@@ -107,6 +108,7 @@ class Loop(object):
         self.screen = pygame.display.set_mode((1280, 720))
         self.camera = camera.Camera(0, 0, 1280, 720, 1.0)
         self.center_map()
+        render.render_navgrid_init(self.nav_grid)
         
         
     def loop_start(self):
@@ -174,11 +176,11 @@ class Loop(object):
         
         self.screen.fill(COLOR_BACKGROUND)
         
-        #maprender.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        #self.nav_grid.render_elements(self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        maprender.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
-        maprender.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        self.nav_mesh.render(self.screen, self.camera)
+        #render.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        #render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        render.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
+        render.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        render.render_navmesh(self.nav_mesh, self.screen, self.camera)
         self.render_collision_box()
         
         pygame.display.flip()

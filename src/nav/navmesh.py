@@ -1,10 +1,5 @@
 from nav.navenum import *
 from nav.navarea import NavArea
-import pygame
-
-
-COLOR_FILL = pygame.Color(15, 15, 15, 255)
-COLOR_BORDER = pygame.Color(127, 63, 0, 255)
 
 
 class NavMesh(object):
@@ -199,33 +194,3 @@ class NavMesh(object):
             xelement = xelement.elements[DIRECTION_RIGHT]
 
         return True
-    
-    
-    def render(self, surface, camera):
-        for area in self.areas:
-            x, y = camera.map_to_screen(area.x1, area.y1)
-            width, height = ((area.x2 - area.x1) * camera.zoom, (area.y2 - area.y1) * camera.zoom)
-            
-            x += 1
-            y += 1
-            width -= 1
-            height -= 1
-            
-            if x < 0:
-                width -= abs(x)
-                x = 0
-            if y < 0:
-                height -= abs(y)
-                y = 0
-            if x + width >= surface.get_width():
-                width = surface.get_width() - x
-            if y + height >= surface.get_height():
-                height = surface.get_height() - y
-                
-            if width < 1 or height < 1:
-                continue
-            
-            rect = pygame.Rect(x, y, width, height)
-            
-            surface.fill(COLOR_FILL, rect, special_flags=pygame.BLEND_SUB)
-            pygame.draw.rect(surface, COLOR_BORDER, rect, 1)

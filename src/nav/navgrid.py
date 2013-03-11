@@ -3,12 +3,7 @@ from nav.navenum import *
 from nav.navelement import NavElement
 from nav.walker import Walker
 import cPickle
-import pygame
 
-
-COLOR_ELEMENT_SPECIAL = pygame.Color(255, 0, 255, 255)
-COLOR_ELEMENT = pygame.Color(255, 255, 255, 255)
-COLOR_ELEMENT_HIGHLIGHT = pygame.Color(0, 255, 255, 255)
 
 REASON_NONE = 0
 REASON_BLOCK_LINE = 1
@@ -50,16 +45,6 @@ class NavGrid(object):
         self.elements = []
         self.element_tasks = []
         self.element_hash = {}
-        
-        self.colors = [None] * 256
-        for index in range(0, 256):
-            v = index / 255.0
-            self.colors[index] = pygame.Color(int(COLOR_ELEMENT.r * v), int(COLOR_ELEMENT.g * v), int(COLOR_ELEMENT.b * v), 255)
-        
-        self.colors_special = [None] * 256
-        for index in range(0, 256):
-            v = index / 255.0
-            self.colors_special[index] = pygame.Color(int(COLOR_ELEMENT_SPECIAL.r * v), int(COLOR_ELEMENT_SPECIAL.g * v), int(COLOR_ELEMENT_SPECIAL.b * v), 255)
         
         
     def add_walkable_element(self, x, y, z):
@@ -147,55 +132,6 @@ class NavGrid(object):
     def element_to_map(self, x, y):
         return (x * self.element_size) - (self.element_size / 2), (y * self.element_size) - (self.element_size / 2)
 
-    
-    def render_elements(self, surface, camera, sx, sy):        
-        rect = pygame.Rect((0, 0), (self.element_size * camera.zoom, self.element_size * camera.zoom))
-        z_mod = 255.0 / self.map_data.depth
-        
-        for element in self.elements:
-            x, y = self.element_to_map(element.x, element.y)
-            x, y = camera.map_to_screen(x, y)
-            rect.top = y - (self.element_size / 2) * camera.zoom
-            rect.left = x - (self.element_size / 2) * camera.zoom
-            
-            v = int((element.z - self.map_data.min_z) * z_mod)
-            if element.special_sector != -1:
-                color = self.colors_special[v]
-            else:
-                color = self.colors[v]
-            
-            pygame.draw.rect(surface, color, rect, 1)
-        
-        rect = pygame.Rect((0, 0), (self.element_size * camera.zoom, self.element_size * camera.zoom))
-        sx, sy = self.map_to_element(sx, sy)
-        element_hash = sx + (sy * (self.map_data.width / self.element_size))
-        element = self.element_hash.get(element_hash)
-        if element is not None:
-            element = element[element.keys()[0]]
-
-            color = COLOR_ELEMENT_HIGHLIGHT
-            x, y = self.element_to_map(element.x, element.y)
-            x, y = camera.map_to_screen(x, y)
-            rect.top = y - (self.element_size / 2) * camera.zoom
-            rect.left = x - (self.element_size / 2) * camera.zoom
-
-            pygame.draw.rect(surface, color, rect, 1)
-            
-            for direction in DIRECTION_RANGE:
-                if element.elements[direction] is not None:
-                    start = (rect.left + (self.element_size * camera.zoom) / 2, rect.top + (self.element_size * camera.zoom) / 2)
-                    
-                    if direction == DIRECTION_UP:
-                        end = (start[0], start[1] - (self.element_size * camera.zoom))
-                    elif direction == DIRECTION_RIGHT:
-                        end = (start[0] + (self.element_size * camera.zoom), start[1])
-                    elif direction == DIRECTION_DOWN:
-                        end = (start[0], start[1] + (self.element_size * camera.zoom))
-                    elif direction == DIRECTION_LEFT:
-                        end = (start[0] - (self.element_size * camera.zoom), start[1])
-                        
-                    pygame.draw.line(surface, color, start, end, 1)
-        
     
     def create_walkable_elements(self, config, iterations=-1):       
         iteration = 0
