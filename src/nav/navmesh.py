@@ -26,7 +26,7 @@ class NavMesh(object):
         right = left + nav_grid.width
         bottom = top + nav_grid.height
         
-        for min_side in range(int(self.max_size_elements / 6), 0, -1):
+        for min_side in range(self.max_size_elements, 0, -1):
             print 'Size iteration {}...'.format(min_side)
             self.generate_iteration(left, top, right, bottom, min_side)
         
@@ -44,7 +44,7 @@ class NavMesh(object):
         return True
     
     
-    def generate_iteration(self, left, top, right, bottom, min_side):
+    def generate_iteration(self, left, top, right, bottom, size):
         x = left
         y = top
         iteration = 0
@@ -59,16 +59,17 @@ class NavMesh(object):
             if elements is not None:
                 for element in elements.itervalues():
                     if element.area is None:
-                        width, height = self.find_largest_area(element, min_side)
-                        if width is None:
+                        if self.find_largest_area(element, size) == False:
                             continue
                         
-                        area = self.add_area(element, width, height)
+                        area = self.add_area(element, size, size)
                         area.sector = element.special_sector
                         area.flags = element.flags
                         area.plane = element.plane
                         self.areas.append(area)
                         move_x = max(move_x, (area.x2 - area.x1) / self.nav_grid.element_size)
+                    else:
+                        move_x = max(move_x, (element.area.x2 - element.area.x1) / self.nav_grid.element_size)
             
             x += move_x
             if x >= right:
@@ -180,41 +181,24 @@ class NavMesh(object):
     def find_largest_area(self, element, size):
         x = element.x
         y = element.y
-        
-        width = 1
-        height = 1
-        area_amount = 1
-        max_height = size
-        
-        xelement = element        
+
+        xelement = element
         cx = x
         while cx < x + size:
             
             yelement = xelement
             cy = y
-            while cy < y + max_height:
+            while cy < y + size:
                 if yelement is None or yelement.area is not None or (not yelement == element):
-                    max_height = cy - y
-                    break
-                
-                new_area_amount = (cx - x + 1) * (cy - y + 1)
-                if new_area_amount > area_amount:
-                    width = cx - x + 1
-                    height = cy - y + 1
-                    area_amount = new_area_amount
+                    return False
                 
                 cy += 1
                 yelement = yelement.elements[DIRECTION_DOWN]
                 
             cx += 1
             xelement = xelement.elements[DIRECTION_RIGHT]
-            if xelement is None:
-                break
-                 
-        if width < size or height < size:
-            return None, None
-       
-        return width, height
+
+        return True
     
     
     def render(self, surface, camera):

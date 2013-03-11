@@ -45,12 +45,9 @@ class NavElement(object):
         self.area = None
     
     
-    def __eq__(self, other):
-        if other is None:
-            return False
-        
+    def __eq__(self, other):       
         if self.plane is not None and other.plane is not None:
-            return self.special_sector == other.special_sector and self.flags == other.flags and self.plane == other.plane 
+            return self.special_sector == other.special_sector and self.flags == other.flags and ((self.plane is not None and other.plane is not None and self.plane == other.plane) or self.z == other.z)  
         else:
             return self.special_sector == other.special_sector and self.flags == other.flags and self.z == other.z
     
