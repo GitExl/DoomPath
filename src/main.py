@@ -53,10 +53,12 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/doom1.wad'
-        source_map = 'E1M5'
-        resolution = 1
+        source_wad = 'test/doom.wad'
+        source_map = 'E4M6'
+        resolution = 4
         configuration = None
+        max_area_size = 256
+        max_area_size_merged = 512
         
         print 'Loading map...'
         wad_file = wad.WADReader(source_wad)
@@ -84,13 +86,13 @@ class Loop(object):
         print 'Creating navigation grid...'
         self.nav_grid = navgrid.NavGrid(self.map_data, self.config, resolution)
         
-        # Create a list of things that players spawn at.
-        print 'Finding starting elements...'
+        # Create a list of things that grid generation starts at.
+        print 'Placing starting elements...'
         start_things = []
         for thing_type in self.config.start_thing_types:
             start_things.extend(self.map_data.get_thing_list(thing_type))
         
-        # Add the spawn things as initial elements to the nav grid.
+        # Add the initial things as initial elements to the nav grid.
         for thing in start_things:
             x = thing[self.map_data.THING_X]
             y = thing[self.map_data.THING_Y]
@@ -117,7 +119,7 @@ class Loop(object):
         print 'Generating navigation mesh...'
         self.nav_mesh = NavMesh()
         if self.mode == MODE_INSPECT:
-            self.nav_mesh.create_from_grid(self.nav_grid)
+            self.nav_mesh.create_from_grid(self.nav_grid, max_area_size, max_area_size_merged)
 
         print 'Creating display...'
         pygame.init()
@@ -134,10 +136,6 @@ class Loop(object):
         
         while True:
             if self.mode == MODE_RENDER: 
-                #self.nav_grid.create_walkable_elements(self.config, 50)
-                #if len(self.nav_grid.element_tasks) == 0:
-                    #break
-                    
                 if self.nav_mesh.create_from_grid(self.nav_grid, 1) == True:
                     break
                 self.update_display()

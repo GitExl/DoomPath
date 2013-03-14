@@ -12,9 +12,12 @@ class NavMesh(object):
         self.max_ratio = 0
 
 
-    def create_from_grid(self, nav_grid):
+    def create_from_grid(self, nav_grid, max_area_size, max_area_size_merged):
+        self.max_area_size = max_area_size
+        self.max_area_size_merged = max_area_size_merged
+        
         self.nav_grid = nav_grid
-        self.max_size_elements = AREA_SIZE_MAX / self.nav_grid.element_size
+        self.max_size_elements = self.max_area_size / self.nav_grid.element_size
         
         left = nav_grid.map_data.min_x / nav_grid.element_size
         top = nav_grid.map_data.min_y / nav_grid.element_size
@@ -42,13 +45,8 @@ class NavMesh(object):
     def generate_iteration(self, left, top, right, bottom, size):
         x = left
         y = top
-        iteration = 0
-        
+
         while 1:
-            iteration += 1
-            if iteration % 40000 == 0:
-                print '{} navigation areas in iteration {}...'.format(len(self.areas), iteration)
-            
             move_x = 1
             elements = self.nav_grid.get_element_list(x, y)
             if elements is not None:
@@ -63,6 +61,10 @@ class NavMesh(object):
                         area.plane = element.plane
                         self.areas.append(area)
                         move_x = max(move_x, (area.x2 - area.x1) / self.nav_grid.element_size)
+                        
+                        if len(self.areas) % int(250 / size) == 0:
+                            print '{} navigation areas.'.format(len(self.areas))
+                        
                     else:
                         move_x = max(move_x, (element.area.x2 - element.area.x1) / self.nav_grid.element_size)
             
@@ -123,7 +125,7 @@ class NavMesh(object):
                 height = area.y2 - area.y1
                 
             # Abort merging if the area dimensions are not good.
-            if width > AREA_SIZE_MAX or height > AREA_SIZE_MAX:
+            if width > self.max_area_size_merged or height > self.max_area_size_merged:
                 continue
             
             # Merge the area surface.

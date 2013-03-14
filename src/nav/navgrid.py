@@ -82,13 +82,10 @@ class NavGrid(object):
     
     
     def write(self, filename):
-        print 'Assigning element indices...'
         for index, element in enumerate(self.elements):
             element.index = index
         
-        print 'Writing grid...'
-        with open(filename, 'wb') as f:
-            
+        with open(filename, 'wb') as f:            
             header = GRID_FILE_HEADER.pack(GRID_FILE_ID, GRID_FILE_VERSION, len(self.elements))
             f.write(header)
 
@@ -115,7 +112,6 @@ class NavGrid(object):
            
                 
     def read(self, filename):
-        print 'Reading grid...'
         with open(filename, 'rb') as f:
             file_id, version, element_count = GRID_FILE_HEADER.unpack(f.read(GRID_FILE_HEADER.size))
             if file_id != GRID_FILE_ID:
@@ -142,7 +138,6 @@ class NavGrid(object):
                 self.elements.append(element)
 
         # Set element references from stored indices.
-        print 'Rebuilding element references...'
         for element in self.elements:
             for direction in DIRECTION_RANGE:
                 if element.elements[direction] != -1:
@@ -150,8 +145,7 @@ class NavGrid(object):
                 else:
                     element.elements[direction] = None
             
-        # Rebuild element_hash
-        print 'Rebuilding element hash table...'
+        # Rebuild element position hash.
         for element in self.elements:
             element_hash = element.x + (element.y * self.width)
             elements = self.element_hash.get(element_hash)
@@ -183,20 +177,14 @@ class NavGrid(object):
         return (x * self.element_size) - (self.element_size / 2), (y * self.element_size) - (self.element_size / 2)
 
     
-    def create_walkable_elements(self, config, iterations=-1):       
-        iteration = 0
-        
+    def create_walkable_elements(self, config):       
         while 1:
-            iteration += 1
-            if iterations != -1 and iteration >= iterations:
-                return
-            
             if len(self.element_tasks) == 0:
                 break
             element = self.element_tasks.pop()
             
             if len(self.elements) % 2500 == 0:
-                print '{} elements, {} tasks left, iteration {}...'.format(len(self.elements), len(self.element_tasks), iteration)
+                print '{} elements, {} tasks left...'.format(len(self.elements), len(self.element_tasks))
             
             for direction in DIRECTION_RANGE:
                 if direction == DIRECTION_UP:
