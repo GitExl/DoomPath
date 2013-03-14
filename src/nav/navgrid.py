@@ -1,9 +1,15 @@
 from doom.mapenum import *
-from nav.navenum import *
 from nav.navelement import NavElement
+from nav.navenum import *
 from nav.walker import Walker
-import cPickle
+import struct
 
+
+GRID_FILE_ID = 'DPGRID'
+GRID_FILE_VERSION = 1
+GRID_FILE_HEADER = struct.Struct('<6sII')
+#133 -451 0 0 -1 0 29694 29655 29656 29658
+GRID_FILE_ELEMENT = struct.Struct('<hhhiiiiiii')
 
 REASON_NONE = 0
 REASON_BLOCK_LINE = 1
@@ -34,7 +40,7 @@ class NavGrid(object):
         self.config = config
         self.map_data = map_data
         
-        self.element_size = config.player_radius / 2
+        self.element_size = config.player_radius
         self.element_height = config.player_height
         
         self.width = self.map_data.width / self.element_size
@@ -83,13 +89,50 @@ class NavGrid(object):
         
         print 'Writing grid...'
         with open(filename, 'wb') as f:
-            cPickle.dump(self.elements, f)
+            
+            header = GRID_FILE_HEADER.pack(GRID_FILE_ID, GRID_FILE_VERSION, len(self.elements))
+            f.write(header)
+
+            indices = [0] * 4            
+            for element in self.elements:
+                if element.plane is None:
+                    plane_hash = 0
+                else:
+                    plane_hash = hash(element.plane)
                 
+                for direction in DIRECTION_RANGE:
+                    if element.elements[direction] is None:
+                        indices[direction] = -1
+                    else:
+                        indices[direction] = element.elements[direction].index
+                        
+                element_data = GRID_FILE_ELEMENT.pack(element.x, element.y, element.z, plane_hash, element.special_sector, element.flags, indices[0], indices[1], indices[2], indices[3])
+                f.write(element_data)
+           
                 
     def read(self, filename):
         print 'Reading grid...'
         with open(filename, 'rb') as f:
-            self.elements = cPickle.load(f)
+            file_id, version, element_count = GRID_FILE_HEADER.unpack(f.read(GRID_FILE_HEADER.size))
+            if file_id != GRID_FILE_ID:
+                print 'Invalid grid file.'
+                return
+            
+            if version != GRID_FILE_VERSION:
+                print 'Unsupported grid version {}'.format(version)
+                return
+            
+            self.elements = []
+            for _ in range(element_count):
+                element = NavElement(0, 0, 0)
+                element.x, element.y, element.z, plane_hash, element.special_sector, element.flags, element.elements[0], element.elements[1], element.elements[2], element.elements[3] = GRID_FILE_ELEMENT.unpack(f.read(GRID_FILE_ELEMENT.size))
+                
+                for sector_extra in self.map_data.sector_extra:
+                    if hash(sector_extra.floor_plane) == plane_hash:
+                        element.plane = sector_extra.floor_plane
+                        break
+                
+                self.elements.append(element)
 
         # Set element references from stored indices.
         print 'Rebuilding element references...'

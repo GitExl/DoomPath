@@ -24,7 +24,6 @@ class Plane(object):
         return -(self.invc * (self.a * x + self.b * y + self.d))
 
 
-
 def plane_setup(map_data, refsector_index, refsector_lines, refline, floor):
     vertex1 = map_data.vertices[refline[LINEDEF_VERTEX_1]]
     vertex2 = map_data.vertices[refline[LINEDEF_VERTEX_2]]
