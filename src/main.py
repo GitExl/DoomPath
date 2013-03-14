@@ -4,8 +4,10 @@ from nav.navmesh import NavMesh
 import cProfile
 import camera
 import config
+import os
 import pygame
 import render
+import sys
 
 
 COLOR_BACKGROUND = pygame.Color(0, 31, 63, 255)
@@ -44,16 +46,19 @@ class Loop(object):
         
         self.iteration = 0
         self.mode = MODE_INSPECT
-        self.generate_grid = False
+        self.generate_grid = True
         
         self.mouse = Mouse()
         self.keys = [False] * 512
                 
         
     def loop_init(self):
+        source_wad = 'test/doom1.wad'
+        source_map = 'E1M8'
+        
         print 'Loading map...'
-        wad_file = wad.WADReader('test/doom1.wad')
-        self.map_data = mapdata.MapData(wad_file, 'E1M1')
+        wad_file = wad.WADReader(source_wad)
+        self.map_data = mapdata.MapData(wad_file, source_map)
         
         # Load dataset for map.
         if self.map_data.is_hexen:
@@ -92,11 +97,15 @@ class Loop(object):
         print 'Added {} starting elements.'.format(len(start_things))
                 
         print 'Detecting walkable space...'
-        if self.generate_grid == True:
+
+        wad_base = os.path.basename(source_wad)
+        wad_base = os.path.splitext(wad_base)[0]
+        grid_file = os.path.split(source_wad)[0] + '/' + wad_base + '_' + source_map.lower() + '.dpg'
+        if self.generate_grid == True or os.path.exists(grid_file) == False:
             self.nav_grid.create_walkable_elements(self.config)
-            self.nav_grid.write('test/nav.bin')
+            self.nav_grid.write(grid_file)
         else:
-            self.nav_grid.read('test/nav.bin')
+            self.nav_grid.read(grid_file)
             
         print 'Generating navigation mesh...'
         self.nav_mesh = NavMesh()

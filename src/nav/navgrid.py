@@ -8,7 +8,6 @@ import struct
 GRID_FILE_ID = 'DPGRID'
 GRID_FILE_VERSION = 1
 GRID_FILE_HEADER = struct.Struct('<6sII')
-#133 -451 0 0 -1 0 29694 29655 29656 29658
 GRID_FILE_ELEMENT = struct.Struct('<hhhiiiiiii')
 
 REASON_NONE = 0
