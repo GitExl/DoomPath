@@ -35,11 +35,11 @@ reason_text = {
 
 class NavGrid(object):
     
-    def __init__(self, map_data, config):
+    def __init__(self, map_data, config, resolution):
         self.config = config
         self.map_data = map_data
         
-        self.element_size = config.player_radius
+        self.element_size = config.player_radius / resolution
         self.element_height = config.player_height
         
         self.width = self.map_data.width / self.element_size

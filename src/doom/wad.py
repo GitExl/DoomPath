@@ -135,3 +135,11 @@ class WADReader(object):
                 return lump
         
         return None
+    
+    
+    def lump_exists(self, lump_name):
+        for lump in self.lumps:
+            if lump.name == lump_name:
+                return True
+            
+        return False

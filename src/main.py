@@ -54,19 +54,27 @@ class Loop(object):
         
     def loop_init(self):
         source_wad = 'test/doom1.wad'
-        source_map = 'E1M8'
+        source_map = 'E1M5'
+        resolution = 1
+        configuration = None
         
         print 'Loading map...'
         wad_file = wad.WADReader(source_wad)
+        
+        if wad_file.lump_exists(source_map) == False:
+            print 'Map {} not found in {}.'.format(source_map, source_wad)
+            return False
+            
         self.map_data = mapdata.MapData(wad_file, source_map)
         
         # Load dataset for map.
-        if self.map_data.is_hexen:
-            dataset = 'zdoom'
-        else:
-            dataset = 'doom'
-        print 'Loading {} configuration...'.format(dataset)
-        self.config = config.Config('doompath.json', dataset)
+        if configuration == None:
+            if self.map_data.is_hexen:
+                configuration = 'zdoom'
+            else:
+                configuration = 'doom'
+        print 'Loading {} configuration...'.format(configuration)
+        self.config = config.Config('doompath.json', configuration)
         
         # Build map structures.
         print 'Map setup...'
@@ -74,7 +82,7 @@ class Loop(object):
         
         # Create empty nav grid.
         print 'Creating navigation grid...'
-        self.nav_grid = navgrid.NavGrid(self.map_data, self.config)
+        self.nav_grid = navgrid.NavGrid(self.map_data, self.config, resolution)
         
         # Create a list of things that players spawn at.
         print 'Finding starting elements...'
@@ -97,7 +105,6 @@ class Loop(object):
         print 'Added {} starting elements.'.format(len(start_things))
                 
         print 'Detecting walkable space...'
-
         wad_base = os.path.basename(source_wad)
         wad_base = os.path.splitext(wad_base)[0]
         grid_file = os.path.split(source_wad)[0] + '/' + wad_base + '_' + source_map.lower() + '.dpg'
@@ -118,6 +125,8 @@ class Loop(object):
         self.camera = camera.Camera(0, 0, 1280, 720, 1.0)
         self.center_map()
         render.render_navgrid_init(self.nav_grid)
+        
+        return True
         
         
     def loop_start(self):
@@ -252,6 +261,7 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    cProfile.run('loop.loop_init()', sort=1)
-    #loop.loop_init()
+    #cProfile.run('loop.loop_init()', sort=1)
+    if loop.loop_init() == False:
+        sys.exit()
     loop.loop_start()
