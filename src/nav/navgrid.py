@@ -104,8 +104,13 @@ class NavGrid(object):
                         indices[direction] = -1
                     else:
                         indices[direction] = element.elements[direction].index
+                    
+                    if element.special_sector is None:
+                        special_sector = -1
+                    else:
+                        special_sector = element.special_sector
                         
-                element_data = GRID_FILE_ELEMENT.pack(element.x, element.y, element.z, plane_hash, element.special_sector, element.flags, indices[0], indices[1], indices[2], indices[3])
+                element_data = GRID_FILE_ELEMENT.pack(element.x, element.y, element.z, plane_hash, special_sector, element.flags, indices[0], indices[1], indices[2], indices[3])
                 f.write(element_data)
            
                 
@@ -130,6 +135,9 @@ class NavGrid(object):
                     if hash(sector_extra.floor_plane) == plane_hash:
                         element.plane = sector_extra.floor_plane
                         break
+                
+                if element.special_sector == -1:
+                    element.special_sector = None
                 
                 self.elements.append(element)
 

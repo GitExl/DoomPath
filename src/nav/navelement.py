@@ -11,7 +11,7 @@ class NavElement(object):
         self.z = z
         
         self.plane = None
-        self.special_sector = -1
+        self.special_sector = None
         self.flags = 0
         
         self.elements = [None] * 4
@@ -43,7 +43,7 @@ class NavElement(object):
         self.index = state[6]
         self.elements = state[7]
         self.area = None
-    
+   
     
     def __eq__(self, other):       
         if self.plane is not None and other.plane is not None:
