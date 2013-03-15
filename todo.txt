@@ -1,7 +1,0 @@
-Step 2
-- Turn nav element grid into nav areas (rectangles).
-	* Remove (set to None!) all but the outer nav elements when generating an area.
-	* Link the outer nav elements to the area they are in.
-- Find where the outer nav elements connect to the same area and generate portal\connections for them.
-	* Add these portal to the area's portal list.
-	* If it is a one-way portal, only add it to the originating area's portal list.

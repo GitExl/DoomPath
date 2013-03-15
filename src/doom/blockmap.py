@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#coding=utf8
+
 from doom.mapenum import *
 import struct
 
@@ -114,7 +117,7 @@ class BlockMap(object):
         """
         Places all linedefs in a map data object onto the blockmap.
         
-        Adapted from [link to ZDBSP source code file].
+        Adapted from ZDBSP's FBlockmapBuilder::BuildBlockmap.
         
         @param map_data: the map data object to use the linedefs from.
         """

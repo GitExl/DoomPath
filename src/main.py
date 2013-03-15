@@ -54,8 +54,8 @@ class Loop(object):
         
     def loop_init(self):
         source_wad = 'test/doom.wad'
-        source_map = 'E4M6'
-        resolution = 4
+        source_map = 'E4M8'
+        resolution = 1
         configuration = None
         max_area_size = 256
         max_area_size_merged = 512

@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+#coding=utf8
+
+"""
+Utility trigonometric functions.
+"""
+
 from ctypes import cdll, c_int, c_void_p, c_short, c_byte
 
 

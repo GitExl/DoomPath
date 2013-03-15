@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+#coding=utf8
+
+"""
+Contains constants for doom map data use.
+"""
+
 # Doom thing data.
 THING_DOOM_X = 0
 THING_DOOM_Y = 1

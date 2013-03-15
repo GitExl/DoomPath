@@ -107,6 +107,10 @@ class WADReader(object):
             
     
     def get_index(self, lump_name):
+        """
+        Returns the first index of a lump name.
+        """
+        
         index = len(self.lumps) - 1
         for lump in reversed(self.lumps):
             if lump.name == lump_name:
@@ -117,6 +121,10 @@ class WADReader(object):
     
     
     def get_lump_index(self, lump_index):
+        """
+        Returns a Lump object from an index.
+        """
+        
         if lump_index >= 0 and lump_index < len(self.lumps):
             return self.lumps[lump_index]
         
@@ -138,6 +146,10 @@ class WADReader(object):
     
     
     def lump_exists(self, lump_name):
+        """
+        Returns True if the lump name exists in this WAD< False otherwise.
+        """
+        
         for lump in self.lumps:
             if lump.name == lump_name:
                 return True

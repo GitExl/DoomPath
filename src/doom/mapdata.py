@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#coding=utf8
+
 from ctypes import create_string_buffer
 from doom import blockmap
 from doom.mapenum import *
