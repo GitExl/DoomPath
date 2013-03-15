@@ -7,6 +7,7 @@ from plane import plane_setup
 import struct
 
 
+# Map data structures.
 VERTEX_DATA = struct.Struct('<hh')
 SECTOR_DATA = struct.Struct('<hh8s8shhh')
 SIDEDEF_DATA = struct.Struct('<hh8s8s8sh')
@@ -14,14 +15,19 @@ NODE_DATA = struct.Struct('<hhhhhhhhhhhhHH')
 SUBSECTOR_DATA = struct.Struct('<hh')
 SEGMENT_DATA = struct.Struct('<hhhhhh')
 
+# Doom specific map data structures.
 THINGS_DATA_DOOM = struct.Struct('<hhHHH')
 LINEDEF_DATA_DOOM = struct.Struct('<HHHHHHH')
 
+# Hexen specific map data structures.
 THINGS_DATA_HEXEN = struct.Struct('<HhhhHHHBBBBBB')
 LINEDEF_DATA_HEXEN = struct.Struct('<HHHBBBBBBHH')
 
 
 class SectorExtra(object):
+    """
+    Container for additional sector information.
+    """
 
     THREEDFLOOR_SECTOR_BOTTOM = 0
     THREEDFLOOR_SECTOR_TOP = 1
@@ -41,15 +47,20 @@ class SectorExtra(object):
 
 
 class MapData(object):
+    """
+    Reads map data from Doom and Hexen format WAD files.
     
-    # Normalized thing data.
+    Does preprocessing for 3d floors, slopes and marks special sectors that may move during gameplay.
+    """
+    
+    # Normalized thing data indices.
     THING_X = 0
     THING_Y = 0
     THING_ANGLE = 0
     THING_TYPE = 0
     THING_FLAGS = 0
     
-    # Normalized linedef data.
+    # Normalized linedef data indices.
     LINEDEF_ACTION = 0
     LINEDEF_SIDEDEF_FRONT = 0
     LINEDEF_SIDEDEF_BACK = 0
@@ -131,13 +142,19 @@ class MapData(object):
         self.nodes, self.nodes_data = self.read_datalump(wad_file, headerindex + 7, NODE_DATA)
         self.sectors, self.sectors_data = self.read_datalump(wad_file, headerindex + 8, SECTOR_DATA)
                 
-        # Create C map buffers.
+        # Create native map data buffers.
         self.c_mapdata = mapdata_create()
         nodes_buffer = create_string_buffer(self.nodes_data, len(self.nodes_data))
         mapdata_put_nodes(self.c_mapdata, len(self.nodes), nodes_buffer)
         
         
     def setup(self, config):
+        """
+        Sets up additional map data.
+        
+        @param config: a configuration object containing action and thing information to process.
+        """
+        
         self.config = config
         
         self.setup_sector_data()
@@ -150,6 +167,10 @@ class MapData(object):
 
 
     def calculate_map_size(self):
+        """
+        Determines the minimum and maximum bounds of the map based on vertex coordinates.
+        """
+        
         # Calculate map width and height.
         for vertex in self.vertices:
             self.min_x = min(self.min_x, vertex[VERTEX_X])
@@ -169,6 +190,10 @@ class MapData(object):
 
 
     def setup_sector_data(self):
+        """
+        Processes additional sector data and generates extra structures for them.
+        """
+        
         # Initialise sector extra data list.
         self.sector_extra = [None] * len(self.sectors)
         for sector_index in range(len(self.sectors)):
@@ -209,6 +234,10 @@ class MapData(object):
         
         
     def setup_stairs(self):
+        """
+        Detects sectors that are affected by stair builder specials.
+        """
+        
         for linedef in self.linedefs:
             action = linedef[self.LINEDEF_ACTION]
             
@@ -269,6 +298,10 @@ class MapData(object):
                 
         
     def setup_threed_floors(self):
+        """
+        Sets up 3d floor stacks.
+        """
+        
         threed_count = 0
         
         # Create lists of 3d floors in each sector.
@@ -338,6 +371,10 @@ class MapData(object):
                     
     
     def setup_slopes(self):
+        """
+        Sets up slope planes from slope specials.
+        """
+        
         if self.config.slope_special is None:
             return
         
@@ -391,7 +428,6 @@ class MapData(object):
                     align_ceiling = ALIGN_BACK
                 
                 sloped = True
-                     
             
             if sloped == True:
                 front = line[self.LINEDEF_SIDEDEF_FRONT]
@@ -427,6 +463,10 @@ class MapData(object):
     
     
     def apply_extra_effect(self, sector_index, effect):
+        """
+        Applies an effect string to sector extra data.
+        """
+        
         sector_extra = self.sector_extra[sector_index]
         
         if effect == 'damage5':
@@ -446,6 +486,10 @@ class MapData(object):
         
     
     def analyze(self):
+        """
+        Analyzes the map and marks sectors that are going to move during gameplay.
+        """ 
+        
         # Detect tagged and special sectors, these are likely going to move.
         for sector_index, sector in enumerate(self.sectors):
             special = sector[SECTOR_SPECIAL]
@@ -509,6 +553,16 @@ class MapData(object):
                   
 
     def read_datalump(self, wad_file, index, datastruct):
+        """
+        Reads struct data from a WAD lump.
+        
+        @param wad_file: WAD file object to read from.
+        @param index: the lump index to read.
+        @param datastruct: a Struct object that determines the data format to read.
+        
+        @return: a tuple containing a list of data that was read, and the raw data itself.
+        """ 
+        
         datalist = []
         data = wad_file.get_lump_index(index).get_data()
         datasize = datastruct.size
@@ -521,6 +575,10 @@ class MapData(object):
     
     
     def get_tag_sectors(self, tag):
+        """
+        Returns a list of sectors that have a specific tag.
+        """
+        
         sectors = []
         
         for sector_index, sector in enumerate(self.sectors):
@@ -531,6 +589,10 @@ class MapData(object):
     
     
     def get_sector_center(self, sector_index):
+        """
+        Returns the center point of a sector, in map coordinates.
+        """
+        
         x_min = -0x8000
         y_min = -0x8000
         x_max = 0x8000
@@ -554,6 +616,10 @@ class MapData(object):
     
     
     def get_thing_list(self, type_id):
+        """
+        Returns a list of things with a specific id.
+        """
+        
         output = []
 
         for thing in self.things:
@@ -564,6 +630,10 @@ class MapData(object):
     
     
     def get_floor_z(self, x, y):
+        """
+        Returns the floor Z level at map coordinates x,y.
+        """
+        
         sector_index = self.get_sector(x, y)
         
         plane = self.sector_extra[sector_index].floor_plane
@@ -575,6 +645,10 @@ class MapData(object):
         
         
     def get_ceil_z(self, x, y):
+        """
+        Returns the ceiling Z level at map coordinates x,y.
+        """
+        
         sector_index = self.get_sector(x, y)
         
         plane = self.sector_extra[sector_index].ceil_plane
@@ -586,6 +660,10 @@ class MapData(object):
     
     
     def get_sector(self, x, y):
+        """
+        Returns the sector index at map coordinates x,y.
+        """
+        
         subsector_index = point_in_subsector(self.c_mapdata, x, y)
         sector_index = self.subsector_sectors[subsector_index]
         
@@ -593,6 +671,10 @@ class MapData(object):
         
         
     def get_sector_floor_z(self, sector_index, x, y):
+        """
+        Returns the floor Z level at map coordinates x,y inside a specific sector index.
+        """
+        
         plane = self.sector_extra[sector_index].floor_plane
       
         if plane is None:
@@ -602,6 +684,10 @@ class MapData(object):
     
     
     def get_sector_ceil_z(self, sector_index, x, y):
+        """
+        Returns the ceiling Z level at map coordinates x,y inside a specific sector index.
+        """
+        
         plane = self.sector_extra[sector_index].ceil_plane
       
         if plane is None:
