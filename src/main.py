@@ -53,8 +53,8 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/dop_map03.wad'
-        source_map = 'MAP03'
+        source_wad = 'test/dv.wad'
+        source_map = 'MAP05'
         resolution = 1
         configuration = None
         max_area_size = 256
