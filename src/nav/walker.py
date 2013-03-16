@@ -275,7 +275,7 @@ class Walker(object):
             state.special_sector = floor_sector_index
         
         # Keep floor planes.
-        if floor_sector_index == state.base_sector_index and floor_extra.floor_plane is not None:
+        if floor_extra.floor_plane is not None:
             state.floor_plane = floor_extra.floor_plane
             
         # Detect any moving sectors.

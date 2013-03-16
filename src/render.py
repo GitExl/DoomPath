@@ -139,7 +139,7 @@ def render_linedefs(map_data, surface, camera, x, y, sector_mark):
         
 
 def render_navmesh(nav_mesh, surface, camera):
-    COLOR_FILL = pygame.Color(11, 11, 11, 255)
+    COLOR_FILL = pygame.Color(15, 15, 15, 255)
     COLOR_BORDER = pygame.Color(191, 95, 0, 255)
 
     for area in nav_mesh.areas:

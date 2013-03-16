@@ -40,7 +40,7 @@ class NavMesh(object):
                 break
             
             print 'Merged to {} navigation areas.'.format(new_len)
-
+        
         print 'Pruning elements...'
         self.prune_elements()
         
@@ -212,9 +212,8 @@ class NavMesh(object):
                 continue
             
             # Select the navigation area that the selected element is a part of.
-            # Ignore ourselves as a merge candidate.
             merge_area = element.area
-            if merge_area is None or merge_area == area:
+            if merge_area is None:
                 continue
             
             # Ignore areas that do not have similar contents.
