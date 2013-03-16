@@ -54,7 +54,7 @@ class Loop(object):
         
     def loop_init(self):
         source_wad = 'test/doom.wad'
-        source_map = 'E4M8'
+        source_map = 'E1M1'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -193,11 +193,11 @@ class Loop(object):
         self.screen.fill(COLOR_BACKGROUND)
         
         #render.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        #render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         render.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
         render.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         render.render_navmesh(self.nav_mesh, self.screen, self.camera)
-        self.render_collision_box()
+        #self.render_collision_box()
         
         pygame.display.flip()
     

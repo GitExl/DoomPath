@@ -157,7 +157,7 @@ def render_navgrid(nav_grid, surface, camera, sx, sy):
         rect.left = x - (nav_grid.element_size / 2) * camera.zoom
         
         v = int((element.z - nav_grid.map_data.min_z) * z_mod)
-        if element.special_sector != -1:
+        if element.special_sector is not None:
             color = nav_grid.grid_colors_special[v]
         else:
             color = nav_grid.grid_colors[v]

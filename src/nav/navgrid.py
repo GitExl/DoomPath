@@ -50,6 +50,7 @@ class NavGrid(object):
         self.elements = []
         self.element_tasks = []
         self.element_hash = {}
+        self.element_prune = set()
         
         
     def add_walkable_element(self, x, y, z):
@@ -80,6 +81,22 @@ class NavGrid(object):
         
         return element
     
+    
+    def remove_pruned_elements(self):
+        self.elements = filter(lambda element: element not in self.element_prune, self.elements)
+        
+        for element in self.element_prune:
+            element_hash = element.x + (element.y * self.width)
+            elements = self.element_hash.get(element_hash)
+            if elements is None:
+                return
+                
+            del elements[element.z]
+            if len(elements) == 0:
+                del self.element_hash[element_hash]
+            
+        self.element_prune.clear()
+                
     
     def write(self, filename):
         for index, element in enumerate(self.elements):

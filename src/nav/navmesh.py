@@ -19,6 +19,7 @@ class NavMesh(object):
         self.nav_grid = nav_grid
         self.max_size_elements = self.max_area_size / self.nav_grid.element_size
         
+        # Determine the locations where to test for elements.
         left = nav_grid.map_data.min_x / nav_grid.element_size
         top = nav_grid.map_data.min_y / nav_grid.element_size
         right = left + nav_grid.width
@@ -39,8 +40,55 @@ class NavMesh(object):
             
             print 'Merged down to {} navigation areas.'.format(new_len)
 
+        print 'Pruning elements...'
+        self.connect_areas()
+        
         return True
     
+    
+    def connect_areas(self):
+        # Prune elements inside areas, and disconnect inner ones.
+        # For each unused element in each area, see if it connects to another area.
+        #    If so, gather all elements that connect to the same area.
+        #    Create a bounding box of these elements for the new connection.
+        #    Test if the bounding box corresponds to a connection that is part of the other area.
+        #        If so, add that portal to our own connection list.
+        #    Else    
+        #        Add the new connection to the current area.
+        #    Mark the elements in this area that are part of the connection as used.
+        
+        # Prune elements that make up the inside of navigation areas.
+        for area in self.areas:
+            x1, y1 = self.nav_grid.map_to_element(area.x1, area.y1)
+            x2, y2 = self.nav_grid.map_to_element(area.x2, area.y2)
+            
+            # Shrink the area size by one element on each side.
+            # Skip pruning elements in the area if the area is too small.
+            x1 += 1
+            x2 -= 1
+            if x1 > x2:
+                continue
+            y1 += 1
+            y2 -= 1
+            if y1 > y2:
+                continue
+            
+            area.inside_x1 = x1
+            area.inside_y1 = y1
+            area.inside_x2 = x2
+            area.inside_y2 = y2
+            area.elements = filter(self.area_element_prune_filter, area.elements)
+        
+        self.nav_grid.remove_pruned_elements()
+    
+    
+    def area_element_prune_filter(self, element):
+        if element.x >= element.area.inside_x1 and element.y >= element.area.inside_y1 and element.x < element.area.inside_x2 and element.y < element.area.inside_y2:
+            self.nav_grid.element_prune.add(element)
+            return False
+        
+        return True
+            
     
     def generate_iteration(self, left, top, right, bottom, size):
         x = left
@@ -102,7 +150,7 @@ class NavMesh(object):
                 continue
             
             # Ignore areas that do not have similar contents.
-            if not (area.elements[0] == merge_area.elements[0]):
+            if not (area.elements[0].is_similar(merge_area.elements[0])):
                 continue
             
             # See if the two areas have matching opposite sides.
@@ -186,7 +234,7 @@ class NavMesh(object):
             yelement = xelement
             cy = y
             while cy < y + size:
-                if yelement is None or yelement.area is not None or (not yelement == element):
+                if yelement is None or yelement.area is not None or (not yelement.is_similar(element)):
                     return False
                 
                 cy += 1

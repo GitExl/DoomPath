@@ -24,12 +24,8 @@ class NavElement(object):
         return 'element x {}, y {}, z {}, flags {}, sector {}, plane {}'.format(self.x, self.y, round(self.z, 2), self.flags, self.special_sector, self.plane)
    
     
-    def __eq__(self, other):       
+    def is_similar(self, other):       
         if self.plane is not None and other.plane is not None:
             return self.special_sector == other.special_sector and self.flags == other.flags and self.plane == other.plane
         else:
             return self.special_sector == other.special_sector and self.flags == other.flags and self.z == other.z
-    
-    
-    def __ne__(self, other):
-        return not self.__eq__(other)
