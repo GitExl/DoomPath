@@ -90,7 +90,7 @@ class NavMesh(object):
                         continue
                 
                     other_element = element.elements[direction]
-                    if other_element is None or other_element.area == area:
+                    if other_element is None or other_element.area == area or other_element.area is None:
                         continue
                     
                     # Find all elements that connect to the other area.
@@ -168,7 +168,6 @@ class NavMesh(object):
         y = top
 
         while 1:
-            move_x = 1
             elements = self.nav_grid.get_element_list(x, y)
             if elements is not None:
                 for element in elements.itervalues():
@@ -181,15 +180,11 @@ class NavMesh(object):
                         area.flags = element.flags
                         area.plane = element.plane
                         self.areas.append(area)
-                        move_x = max(move_x, (area.x2 - area.x1) / self.nav_grid.element_size)
                         
                         if len(self.areas) % int(250 / size) == 0:
                             print '{} navigation areas.'.format(len(self.areas))
-                        
-                    else:
-                        move_x = max(move_x, (element.area.x2 - element.area.x1) / self.nav_grid.element_size)
             
-            x += move_x
+            x += 1
             if x >= right:
                 x = left
                 y += 1
@@ -295,7 +290,7 @@ class NavMesh(object):
         
         return area
     
-    
+
     def find_largest_area(self, element, size):
         x = element.x
         y = element.y

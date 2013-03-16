@@ -53,7 +53,7 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/eaeuro02.wad'
+        source_wad = 'test/test.wad'
         source_map = 'MAP01'
         resolution = 1
         configuration = None
@@ -203,7 +203,7 @@ class Loop(object):
         render.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         render.render_navmesh(self.nav_mesh, self.screen, self.camera)
         connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        #state = self.render_collision_box()
+        state = self.render_collision_box()
         self.render_debug_text(connections, state, elements)
         
         pygame.display.flip()
