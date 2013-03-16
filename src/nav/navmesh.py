@@ -1,5 +1,6 @@
-from nav.navenum import *
+from nav import navconnection
 from nav.navarea import NavArea
+from nav.navenum import *
 
 
 class NavMesh(object):
@@ -38,26 +39,23 @@ class NavMesh(object):
             if new_len == old_len:
                 break
             
-            print 'Merged down to {} navigation areas.'.format(new_len)
+            print 'Merged to {} navigation areas.'.format(new_len)
 
         print 'Pruning elements...'
-        self.connect_areas()
+        self.prune_elements()
+        
+        print 'Connecting areas...'
+        count = self.connect_areas()
+        print 'Generated {} connections.'.format(count)
         
         return True
-    
-    
-    def connect_areas(self):
-        # Prune elements inside areas, and disconnect inner ones.
-        # For each unused element in each area, see if it connects to another area.
-        #    If so, gather all elements that connect to the same area.
-        #    Create a bounding box of these elements for the new connection.
-        #    Test if the bounding box corresponds to a connection that is part of the other area.
-        #        If so, add that portal to our own connection list.
-        #    Else    
-        #        Add the new connection to the current area.
-        #    Mark the elements in this area that are part of the connection as used.
+
+
+    def prune_elements(self):
+        """
+        Prunes elements that make up the inside of all navigation areas.
+        """
         
-        # Prune elements that make up the inside of navigation areas.
         for area in self.areas:
             x1, y1 = self.nav_grid.map_to_element(area.x1, area.y1)
             x2, y2 = self.nav_grid.map_to_element(area.x2, area.y2)
@@ -78,8 +76,83 @@ class NavMesh(object):
             area.inside_x2 = x2
             area.inside_y2 = y2
             area.elements = filter(self.area_element_prune_filter, area.elements)
-        
+            
         self.nav_grid.remove_pruned_elements()
+    
+    
+    def connect_areas(self):
+        count = 0
+               
+        for area in self.areas:
+            for element in area.elements:
+                for direction in DIRECTION_RANGE:
+                    if element.connection[direction] is not None:
+                        continue
+                
+                    other_element = element.elements[direction]
+                    if other_element is None or other_element.area == area:
+                        continue
+                    
+                    # Find all elements that connect to the other area.
+                    connecting = []
+                    other_area = other_element.area
+                    for c_element in area.elements:
+                        if c_element.elements[direction] is not None and c_element.elements[direction].area == other_area:
+                            connecting.append(c_element)
+                            connecting.append(c_element.elements[direction])
+                    
+                    x1, y1, x2, y2 = self.get_elements_bounds(connecting)
+                    
+                    # See if a connection exists in the other area that is equal to the current one.
+                    connection = None
+                    for c_connection in other_area.connections:
+                        if c_connection.area_b == area and c_connection.x1 == x1 and c_connection.y1 == y1 and c_connection.x2 == x2 and c_connection.y2 == y2:
+                            connection = c_connection
+                            connection.flags |= navconnection.CONNECTION_FLAG_BA
+                            break
+
+                    # Create new connection object if needed.
+                    if connection is None:
+                        count += 1
+                        
+                        connection = navconnection.NavConnection()
+                        connection.flags = navconnection.CONNECTION_FLAG_AB
+                        connection.area_a = area
+                        connection.area_b = other_area
+                        connection.x1, connection.y1 = x1, y1
+                        connection.x2, connection.y2 = x2, y2
+                    
+                    area.connections.append(connection)
+                    
+                    # Assign connection to elements.
+                    for c_element in connecting:
+                        if c_element.area == area:
+                            c_element.connection[direction] = connection
+        
+        return count
+                    
+    
+    def get_elements_bounds(self, elements):
+        x1 = 0x80000
+        y1 = 0x80000
+        x2 = -0x80000
+        y2 = -0x80000
+        
+        for element in elements:
+            x1 = min(element.x, x1)
+            y1 = min(element.y, y1)
+            x2 = max(element.x, x2)
+            y2 = max(element.y, y2)
+        
+        x1, y1 = self.nav_grid.element_to_map(x1, y1)
+        x2, y2 = self.nav_grid.element_to_map(x2, y2)
+        
+        x1 -= self.nav_grid.element_size / 2
+        y1 -= self.nav_grid.element_size / 2
+        x2 += self.nav_grid.element_size / 2
+        y2 += self.nav_grid.element_size / 2
+        
+        return x1, y1, x2, y2
     
     
     def area_element_prune_filter(self, element):

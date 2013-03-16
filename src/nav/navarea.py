@@ -11,6 +11,7 @@ class NavArea(object):
         'flags',
         'elements',
         'plane',
+        'connections',
         
         'inside_x1', 'inside_y1',
         'inside_x2', 'inside_y2'
@@ -28,6 +29,7 @@ class NavArea(object):
         self.flags = 0
         self.elements = []
         self.plane = None
+        self.connections = []
         
         self.inside_x1 = 0
         self.inside_y1 = 0

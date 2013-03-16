@@ -87,11 +87,11 @@ class MapData(object):
         
         self.is_hexen = False
 
-        self.min_x = 0x8000
+        self.min_x = 0x80000
         self.max_x = 0
-        self.min_y = 0x8000
+        self.min_y = 0x80000
         self.max_y = 0
-        self.min_z = 0x8000
+        self.min_z = 0x80000
         self.max_z = 0
         
         self.width = 0

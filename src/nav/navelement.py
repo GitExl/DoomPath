@@ -2,7 +2,19 @@ from nav.navenum import *
 
 
 class NavElement(object):
-    __slots__ = ('x', 'y', 'z', 'plane', 'special_sector', 'flags', 'elements', 'area', 'index')
+    __slots__ = (
+        'x', 'y', 'z',
+        
+        'plane',
+        'special_sector',
+        'flags',
+        
+        'elements',
+        'area',
+        'connection',
+        
+        'index'
+    )
 
     
     def __init__(self, x, y, z):
@@ -16,12 +28,13 @@ class NavElement(object):
         
         self.elements = [None] * 4
         self.area = None
+        self.connection = [None] * 4
         
         self.index = -1
         
         
     def __repr__(self):
-        return 'element x {}, y {}, z {}, flags {}, sector {}, plane {}'.format(self.x, self.y, round(self.z, 2), self.flags, self.special_sector, self.plane)
+        return 'element {}, {}, {}, flags {}, sector {}, plane {}'.format(self.x, self.y, round(self.z, 2), self.flags, self.special_sector, self.plane)
    
     
     def is_similar(self, other):       

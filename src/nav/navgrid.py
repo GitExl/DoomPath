@@ -83,8 +83,10 @@ class NavGrid(object):
     
     
     def remove_pruned_elements(self):
+        # Filter prune elements from the element list.
         self.elements = filter(lambda element: element not in self.element_prune, self.elements)
         
+        # Remove pruned elements from the element hash table.
         for element in self.element_prune:
             element_hash = element.x + (element.y * self.width)
             elements = self.element_hash.get(element_hash)
@@ -94,8 +96,14 @@ class NavGrid(object):
             del elements[element.z]
             if len(elements) == 0:
                 del self.element_hash[element_hash]
-            
-        self.element_prune.clear()
+                
+        # Remove now invalid element connections.
+        for element in self.elements:
+            for direction in DIRECTION_RANGE:
+                if element.elements[direction] in self.element_prune:
+                    element.elements[direction] = None
+        
+        self.element_prune.clear() 
                 
     
     def write(self, filename):

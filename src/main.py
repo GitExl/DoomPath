@@ -53,8 +53,8 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/doom.wad'
-        source_map = 'E1M1'
+        source_wad = 'test/eaeuro02.wad'
+        source_map = 'MAP01'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -188,16 +188,23 @@ class Loop(object):
 
 
     def update_display(self):
-        sector = self.map_data.get_sector(self.mouse.map_x, self.mouse.map_y)
+        sector = -1
+        state = None
+        connections = None
+        elements = None
+        
+        #sector = self.map_data.get_sector(self.mouse.map_x, self.mouse.map_y)
         
         self.screen.fill(COLOR_BACKGROUND)
         
         #render.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        #elements = render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         render.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
         render.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         render.render_navmesh(self.nav_mesh, self.screen, self.camera)
-        #self.render_collision_box()
+        connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
+        #state = self.render_collision_box()
+        self.render_debug_text(connections, state, elements)
         
         pygame.display.flip()
     
@@ -223,19 +230,29 @@ class Loop(object):
         rect = pygame.Rect((x, y), (size, size))
         pygame.draw.rect(self.screen, color, rect, 1)
         
-        # Debug text.
+        return state
+        
+
+    def render_debug_text(self, connections, state, elements):
         text = '{}, {}'.format(self.mouse.map_x, self.mouse.map_y)
         self.render_text(text, 4, 4)
-        text = 'floor z: {}, ceil z: {}, block line: {}, block thing: {}, special sector {}'.format(round(state.floorz, 2), round(state.ceilz, 2), state.blockline, state.blockthing, state.special_sector)
-        self.render_text(text, 4, 20)
         
-        x, y = self.nav_grid.map_to_element(self.mouse.map_x, self.mouse.map_y)
-        elements = self.nav_grid.get_element_list(x, y)
+        x = 4
+        y = 46
+        
+        if state is not None:
+            text = 'floor z: {}, ceil z: {}, block line: {}, block thing: {}, special sector {}'.format(round(state.floorz, 2), round(state.ceilz, 2), state.blockline, state.blockthing, state.special_sector)
+            self.render_text(text, 4, 20)
+            y += 18
+        
         if elements is not None:
-            x = 4
-            y = 46
-            for element in elements.itervalues():
+            for element in elements:
                 self.render_text(str(element), x, y)
+                y += 18
+        
+        if connections is not None:
+            for connection in connections:
+                self.render_text(str(connection), x, y)
                 y += 18
         
         
@@ -259,7 +276,7 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    #cProfile.run('loop.loop_init()', sort=1)
-    if loop.loop_init() == False:
-        sys.exit()
+    cProfile.run('loop.loop_init()', sort=1)
+    #if loop.loop_init() == False:
+    #    sys.exit()
     loop.loop_start()

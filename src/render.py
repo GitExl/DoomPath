@@ -14,6 +14,48 @@ grid_colors = None
 grid_colors_special = None
 
 
+def render_connections(nav_mesh, surface, camera, x, y):
+    COLOR_FILL = pygame.Color(7, 23, 31, 255)
+    COLOR_ACTIVE = pygame.Color(255, 47, 63, 255)
+    
+    connections = set()
+    
+    for area in nav_mesh.areas:
+        for connection in area.connections:
+            rx, ry = camera.map_to_screen(connection.x1, connection.y1)
+            width, height = ((connection.x2 - connection.x1) * camera.zoom, (connection.y2 - connection.y1) * camera.zoom)
+            
+            rx += 1
+            ry += 1
+            width -= 1
+            height -= 1
+            
+            if rx < 0:
+                width -= abs(rx)
+                rx = 0
+            if ry < 0:
+                height -= abs(ry)
+                ry = 0
+            if rx + width >= surface.get_width():
+                width = surface.get_width() - rx
+            if ry + height >= surface.get_height():
+                height = surface.get_height() - ry
+                
+            if width < 1 or height < 1:
+                continue
+
+            if x >= connection.x1 and y >= connection.y1 and x < connection.x2 and y < connection.y2:
+                color = COLOR_ACTIVE
+                connections.add(connection)
+            else:
+                color = COLOR_FILL
+                
+            rect = pygame.Rect(rx, ry, width, height)
+            surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
+            
+    return connections
+
+
 def render_blockmap(map_data, surface, camera, x, y):
     box_top = y + map_data.config.player_radius
     box_bottom = y - map_data.config.player_radius
@@ -97,8 +139,8 @@ def render_linedefs(map_data, surface, camera, x, y, sector_mark):
         
 
 def render_navmesh(nav_mesh, surface, camera):
-    COLOR_FILL = pygame.Color(15, 15, 15, 255)
-    COLOR_BORDER = pygame.Color(127, 63, 0, 255)
+    COLOR_FILL = pygame.Color(11, 11, 11, 255)
+    COLOR_BORDER = pygame.Color(191, 95, 0, 255)
 
     for area in nav_mesh.areas:
         x, y = camera.map_to_screen(area.x1, area.y1)
@@ -147,10 +189,15 @@ def render_navgrid_init(nav_grid):
 def render_navgrid(nav_grid, surface, camera, sx, sy):
     COLOR_ELEMENT_HIGHLIGHT = pygame.Color(0, 255, 255, 255)
     
+    sx, sy = nav_grid.map_to_element(sx, sy)
     rect = pygame.Rect((0, 0), (nav_grid.element_size * camera.zoom, nav_grid.element_size * camera.zoom))
     z_mod = 255.0 / nav_grid.map_data.depth
     
+    elements = []
     for element in nav_grid.elements:
+        if element.x == sx and element.y == sy:
+            elements.append(element)
+        
         x, y = nav_grid.element_to_map(element.x, element.y)
         x, y = camera.map_to_screen(x, y)
         rect.top = y - (nav_grid.element_size / 2) * camera.zoom
@@ -165,7 +212,6 @@ def render_navgrid(nav_grid, surface, camera, sx, sy):
         pygame.draw.rect(surface, color, rect, 1)
     
     rect = pygame.Rect((0, 0), (nav_grid.element_size * camera.zoom, nav_grid.element_size * camera.zoom))
-    sx, sy = nav_grid.map_to_element(sx, sy)
     element_hash = sx + (sy * (nav_grid.map_data.width / nav_grid.element_size))
     element = nav_grid.element_hash.get(element_hash)
     if element is not None:
@@ -194,3 +240,4 @@ def render_navgrid(nav_grid, surface, camera, sx, sy):
                     
                 pygame.draw.line(surface, color, start, end, 1)
     
+    return elements
