@@ -23,15 +23,15 @@ typedef struct {
 } sector_t;
 
 typedef struct {
-    int16_t num_segs;
-    int16_t first_seg;
+    uint16_t num_segs;
+    uint16_t first_seg;
 } subsector_t;
 
 typedef struct {
-    int16_t vertex1;
-    int16_t vertex2;
+    uint16_t vertex1;
+    uint16_t vertex2;
     int16_t angle;
-    int16_t linedef;
+    uint16_t linedef;
     int16_t side;
     int16_t offset;
 } seg_t;

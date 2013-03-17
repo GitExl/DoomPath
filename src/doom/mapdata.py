@@ -15,8 +15,8 @@ VERTEX_DATA = struct.Struct('<hh')
 SECTOR_DATA = struct.Struct('<hh8s8shhh')
 SIDEDEF_DATA = struct.Struct('<hh8s8s8sh')
 NODE_DATA = struct.Struct('<hhhhhhhhhhhhHH')
-SUBSECTOR_DATA = struct.Struct('<hh')
-SEGMENT_DATA = struct.Struct('<hhhhhh')
+SUBSECTOR_DATA = struct.Struct('<HH')
+SEGMENT_DATA = struct.Struct('<HHhHhh')
 
 # Doom specific map data structures.
 THINGS_DATA_DOOM = struct.Struct('<hhHHH')

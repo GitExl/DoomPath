@@ -193,7 +193,7 @@ class Loop(object):
         connections = None
         elements = None
         
-        #sector = self.map_data.get_sector(self.mouse.map_x, self.mouse.map_y)
+        sector = self.map_data.get_sector(self.mouse.map_x, self.mouse.map_y)
         
         self.screen.fill(COLOR_BACKGROUND)
         
