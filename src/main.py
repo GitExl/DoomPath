@@ -44,17 +44,13 @@ class Loop(object):
         pygame.font.init()
         self.font = pygame.font.Font('04b_03__.ttf', 8)
         
-        self.iteration = 0
-        self.mode = MODE_INSPECT
-        self.generate_grid = True
-        
         self.mouse = Mouse()
         self.keys = [False] * 512
                 
         
     def loop_init(self):
-        source_wad = 'test/dv.wad'
-        source_map = 'MAP05'
+        source_wad = 'test/doom.wad'
+        source_map = 'E1M1'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -104,22 +100,15 @@ class Loop(object):
                 continue
             
             self.nav_grid.add_walkable_element(x, y, z)
+            
         print 'Added {} starting elements.'.format(len(start_things))
                 
         print 'Detecting walkable space...'
-        wad_base = os.path.basename(source_wad)
-        wad_base = os.path.splitext(wad_base)[0]
-        grid_file = os.path.split(source_wad)[0] + '/' + wad_base + '_' + source_map.lower() + '.dpg'
-        if self.generate_grid == True or os.path.exists(grid_file) == False:
-            self.nav_grid.create_walkable_elements(self.config)
-            self.nav_grid.write(grid_file)
-        else:
-            self.nav_grid.read(grid_file)
+        self.nav_grid.create_walkable_elements(self.config)
             
         print 'Generating navigation mesh...'
         self.nav_mesh = NavMesh()
-        if self.mode == MODE_INSPECT:
-            self.nav_mesh.create_from_grid(self.nav_grid, max_area_size, max_area_size_merged)
+        self.nav_mesh.create_from_grid(self.nav_grid, max_area_size, max_area_size_merged)
 
         print 'Creating display...'
         pygame.init()
@@ -135,56 +124,46 @@ class Loop(object):
         update_display = True
         
         while True:
-            if self.mode == MODE_RENDER: 
-                if self.nav_mesh.create_from_grid(self.nav_grid, 1) == True:
-                    break
-                self.update_display()
-                
-                #pygame.image.save(self.screen, 'images/screen_{:06d}.png'.format(self.iteration))
-                self.iteration += 1
+            event = pygame.event.wait()
             
-            elif self.mode == MODE_INSPECT:
+            if event.type == pygame.QUIT or self.keys[pygame.K_ESCAPE] == True:
+                break
                 
-                event = pygame.event.wait()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.mouse.buttons[event.button] = True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                self.mouse.buttons[event.button] = False
                 
-                if event.type == pygame.QUIT or self.keys[pygame.K_ESCAPE] == True:
-                    break
-                    
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    self.mouse.buttons[event.button] = True
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    self.mouse.buttons[event.button] = False
-                    
-                elif event.type == pygame.MOUSEMOTION:
-                    self.mouse.x = event.pos[0]
-                    self.mouse.y = event.pos[1]
-                    
-                    self.mouse.map_x, self.mouse.map_y = self.camera.screen_to_map(event.pos[0], event.pos[1])
-                    self.mouse.map_x = int(self.mouse.map_x)
-                    self.mouse.map_y = int(self.mouse.map_y)
-                    update_display = True
-                    
-                    if self.mouse.buttons[3] == True:
-                        self.camera.move_relative(event.rel[0] / self.camera.zoom, event.rel[1] / self.camera.zoom)
-                        update_display = True
-                    
-                elif event.type == pygame.KEYDOWN:
-                    self.keys[event.key] = True
-                elif event.type == pygame.KEYUP:
-                    self.keys[event.key] = False
-                    
-                if self.mouse.buttons[4] == True:
-                    self.camera.set_zoom(self.camera.zoom / 0.92)
-                    #self.camera.set_center(self.mouse.map_x, self.mouse.map_y)
-                    update_display = True
-                elif self.mouse.buttons[5] == True:
-                    self.camera.set_zoom(self.camera.zoom * 0.92)
-                    #self.camera.set_center(self.mouse.map_x, self.mouse.map_y)
+            elif event.type == pygame.MOUSEMOTION:
+                self.mouse.x = event.pos[0]
+                self.mouse.y = event.pos[1]
+                
+                self.mouse.map_x, self.mouse.map_y = self.camera.screen_to_map(event.pos[0], event.pos[1])
+                self.mouse.map_x = int(self.mouse.map_x)
+                self.mouse.map_y = int(self.mouse.map_y)
+                update_display = True
+                
+                if self.mouse.buttons[3] == True:
+                    self.camera.move_relative(event.rel[0] / self.camera.zoom, event.rel[1] / self.camera.zoom)
                     update_display = True
                 
-                if update_display == True:
-                    self.update_display()
-                    update_display = False
+            elif event.type == pygame.KEYDOWN:
+                self.keys[event.key] = True
+            elif event.type == pygame.KEYUP:
+                self.keys[event.key] = False
+                
+            if self.mouse.buttons[4] == True:
+                self.camera.set_zoom(self.camera.zoom / 0.92)
+                #self.camera.set_center(self.mouse.map_x, self.mouse.map_y)
+                update_display = True
+            elif self.mouse.buttons[5] == True:
+                self.camera.set_zoom(self.camera.zoom * 0.92)
+                #self.camera.set_center(self.mouse.map_x, self.mouse.map_y)
+                update_display = True
+            
+            if update_display == True:
+                self.update_display()
+                update_display = False
 
 
     def update_display(self):
