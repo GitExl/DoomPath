@@ -125,43 +125,30 @@ void mapdata_put_nodes(mapdata_t* mapdata, uint32_t num_nodes, void* node_data) 
 }
 
 
-uint16_t point_on_node_side(mapdata_t* mapdata, const int16_t x, const int16_t y, node_t* node) {
-    int16_t dx;
-    int16_t dy;
-    int16_t left;
-    int16_t right;
-
-    if (!node->delta_x) {
+uint16_t point_on_node_side(mapdata_t* mapdata, int16_t x, int16_t y, node_t* node) {
+    if (node->delta_x == 0) {
         if (x <= node->x) {
-            return node->delta_y > 0;
+            return (node->delta_y > 0);
+        } else {
+            return (node->delta_y < 0);
         }
-        return node->delta_y < 0;
-    }
-    if (!node->delta_y) {
+        
+    } else if (node->delta_y == 0) {
         if (y <= node->y) {
-            return node->delta_x < 0;
+            return (node->delta_x < 0);
+        } else {
+            return (node->delta_x > 0);
         }
-        return node->delta_x > 0;
     }
 
-    dx = (x - node->x);
-    dy = (y - node->y);
+    x -= node->x;
+    y -= node->y;
 
-    if ((node->delta_y ^ node->delta_x ^ dx ^ dy) & 0x80000000) {
-        if  ((node->delta_y ^ dx) & 0x80000000) {
-            return 1;
-        }
-        return 0;
-    }
-
-    left = node->delta_y * dx;
-    right = dy * node->delta_x;
-
-    if (right < left) {
-        return 0;
+    if ((node->delta_y ^ node->delta_x ^ x ^ y) < 0) {
+        return (node->delta_y ^ x) < 0;
     }
     
-    return 1;
+    return y * node->delta_x >= node->delta_y * x;
 }
 
 
