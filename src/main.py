@@ -169,6 +169,7 @@ class Loop(object):
     def update_display(self):
         sector = -1
         state = None
+        areas = None
         connections = None
         elements = None
         
@@ -180,10 +181,10 @@ class Loop(object):
         #elements = render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         render.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
         render.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        render.render_navmesh(self.nav_mesh, self.screen, self.camera)
+        areas = render.render_navmesh(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         state = self.render_collision_box()
-        self.render_debug_text(connections, state, elements)
+        self.render_debug_text(connections, state, elements, areas)
         
         pygame.display.flip()
     
@@ -212,7 +213,7 @@ class Loop(object):
         return state
         
 
-    def render_debug_text(self, connections, state, elements):
+    def render_debug_text(self, connections, state, elements, areas):
         text = '{}, {}'.format(self.mouse.map_x, self.mouse.map_y)
         self.render_text(text, 4, 4)
         
@@ -232,6 +233,11 @@ class Loop(object):
         if connections is not None:
             for connection in connections:
                 self.render_text(str(connection), x, y)
+                y += 18
+                
+        if areas is not None:
+            for area in areas:
+                self.render_text(str(area), x, y)
                 y += 18
         
         
@@ -255,7 +261,7 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    cProfile.run('loop.loop_init()', sort=1)
-    #if loop.loop_init() == False:
-    #    sys.exit()
+    #cProfile.run('loop.loop_init()', sort=1)
+    if loop.loop_init() == False:
+        sys.exit()
     loop.loop_start()

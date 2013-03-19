@@ -138,11 +138,20 @@ def render_linedefs(map_data, surface, camera, x, y, sector_mark):
         pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_x), int(center_y)), int(5 * camera.zoom))
         
 
-def render_navmesh(nav_mesh, surface, camera):
+def render_navmesh(nav_mesh, surface, camera, mouse_x, mouse_y):
     COLOR_FILL = pygame.Color(15, 15, 15, 255)
+    COLOR_HIGHLIGHT = pygame.Color(63, 63, 63, 255)
     COLOR_BORDER = pygame.Color(191, 95, 0, 255)
 
+    areas = []
+
     for area in nav_mesh.areas:
+        if mouse_x >= area.x1 and mouse_y >= area.y1 and mouse_x < area.x2 and mouse_y < area.y2:
+            color = COLOR_HIGHLIGHT
+            areas.append(area)
+        else:
+            color = COLOR_FILL
+        
         x, y = camera.map_to_screen(area.x1, area.y1)
         width, height = ((area.x2 - area.x1) * camera.zoom, (area.y2 - area.y1) * camera.zoom)
         
@@ -167,8 +176,10 @@ def render_navmesh(nav_mesh, surface, camera):
         
         rect = pygame.Rect(x, y, width, height)
         
-        surface.fill(COLOR_FILL, rect, special_flags=pygame.BLEND_SUB)
+        surface.fill(color, rect, special_flags=pygame.BLEND_SUB)
         pygame.draw.rect(surface, COLOR_BORDER, rect, 1)
+    
+    return areas
 
 
 def render_navgrid_init(nav_grid):
