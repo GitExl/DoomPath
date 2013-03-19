@@ -133,10 +133,10 @@ class NavMesh(object):
                     
     
     def get_elements_bounds(self, elements):
-        x1 = 0x80000
-        y1 = 0x80000
-        x2 = -0x80000
-        y2 = -0x80000
+        x1 = 0x8000
+        y1 = 0x8000
+        x2 = -0x8000
+        y2 = -0x8000
         
         for element in elements:
             x1 = min(element.x, x1)
@@ -164,25 +164,32 @@ class NavMesh(object):
             
     
     def generate_iteration(self, left, top, right, bottom, size):
+        find_largest_area = self.find_largest_area
+        add_area = self.add_area
+        areas = self.areas
+        element_hash = self.nav_grid.element_hash
+        grid_width = self.nav_grid.width
+
         x = left
         y = top
-
         while 1:
-            elements = self.nav_grid.get_element_list(x, y)
+            elements = element_hash.get(x + (y * grid_width))
             if elements is not None:
                 for element in elements.itervalues():
-                    if element.area is None:
-                        if self.find_largest_area(element, size) == False:
-                            continue
-                        
-                        area = self.add_area(element, size, size)
-                        area.sector = element.special_sector
-                        area.flags = element.flags
-                        area.plane = element.plane
-                        self.areas.append(area)
-                        
-                        if len(self.areas) % int(250 / size) == 0:
-                            print '{} navigation areas.'.format(len(self.areas))
+                    if element.area is not None:
+                        continue
+                    
+                    if find_largest_area(element, size) == False:
+                        continue
+                    
+                    area = add_area(element, size, size)
+                    area.sector = element.special_sector
+                    area.flags = element.flags
+                    area.plane = element.plane
+                    areas.append(area)
+                    
+                    if len(areas) % int(250 / size) == 0:
+                        print '{} navigation areas.'.format(len(areas))
             
             x += 1
             if x >= right:
