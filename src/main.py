@@ -49,8 +49,8 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/doom.wad'
-        source_map = 'E1M1'
+        source_wad = 'test/dv.wad'
+        source_map = 'MAP05'
         resolution = 1
         configuration = None
         max_area_size = 256

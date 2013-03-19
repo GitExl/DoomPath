@@ -294,20 +294,36 @@ class NavMesh(object):
         x = element.x
         y = element.y
 
-        xelement = element
-        cx = x
-        while cx < x + size:
+        # Move to the bottom right element.
+        # This also rejects the potential area early on.
+        start_element = element
+        cx = 1
+        while cx < size:
+            start_element = start_element.elements[DIRECTION_RIGHT]
+            if start_element is None:
+                return False
+            
+            start_element = start_element.elements[DIRECTION_DOWN]
+            if start_element is None:
+                return False
+            
+            cx += 1
+        
+        # Test if each element is similar to the first one.
+        xelement = start_element
+        cx = x + size
+        while cx > x:
             
             yelement = xelement
-            cy = y
-            while cy < y + size:
+            cy = y + size
+            while cy > y:
                 if yelement is None or yelement.area is not None or (not yelement.is_similar(element)):
                     return False
                 
-                cy += 1
-                yelement = yelement.elements[DIRECTION_DOWN]
+                cy -= 1
+                yelement = yelement.elements[DIRECTION_UP]
                 
-            cx += 1
-            xelement = xelement.elements[DIRECTION_RIGHT]
+            cx -= 1
+            xelement = xelement.elements[DIRECTION_LEFT]
 
         return True
