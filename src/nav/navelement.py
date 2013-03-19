@@ -38,7 +38,7 @@ class NavElement(object):
    
     
     def is_similar(self, other):       
-        if self.plane is not None and other.plane is not None:
+        if self.plane is not None or other.plane is not None:
             return self.special_sector == other.special_sector and self.flags == other.flags and self.plane == other.plane
         else:
             return self.special_sector == other.special_sector and self.flags == other.flags and self.z == other.z

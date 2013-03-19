@@ -26,9 +26,11 @@ class NavMesh(object):
         right = left + nav_grid.width
         bottom = top + nav_grid.height
         
-        for min_side in range(self.max_size_elements, 0, -1):
+        min_side = self.max_size_elements
+        while min_side > 0:
             print 'Size iteration {}...'.format(min_side)
-            self.generate_iteration(left, top, right, bottom, min_side)
+            self.generate_iteration(left, top, right, bottom, min_side)            
+            min_side -= 1
         
         print 'Merging...'
         while 1:
@@ -40,7 +42,7 @@ class NavMesh(object):
                 break
             
             print 'Merged to {} navigation areas.'.format(new_len)
-        
+
         print 'Pruning elements...'
         self.prune_elements()
         
@@ -224,7 +226,9 @@ class NavMesh(object):
                 continue
             
             # Ignore areas that do not have similar contents.
-            if not (area.elements[0].is_similar(merge_area.elements[0])):
+            element_a = area.elements[0]
+            element_b = merge_area.elements[0]
+            if not (element_a.is_similar(element_b)):
                 continue
             
             # See if the two areas have matching opposite sides.
