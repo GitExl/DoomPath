@@ -49,8 +49,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/dv.wad'
-        source_map = 'MAP05'
+        source_wad = 'test/doom1.wad'
+        source_map = 'E1M9'
+        dest_mesh = 'test/doom1_e1m9.dpm'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -96,7 +97,7 @@ class Loop(object):
             
             collision, _ = self.nav_grid.walker.check_position(x, y, z, self.config.player_radius, self.config.player_height)
             if collision == True:
-                print 'Thing at {},{} has no room to spawn, ignoring.'.format(x, y)
+                print 'Thing at {}, {} has no room to spawn, ignoring.'.format(x, y)
                 continue
             
             self.nav_grid.add_walkable_element(x, y, z)
@@ -109,6 +110,8 @@ class Loop(object):
         print 'Generating navigation mesh...'
         self.nav_mesh = NavMesh()
         self.nav_mesh.create_from_grid(self.nav_grid, max_area_size, max_area_size_merged)
+        self.nav_mesh.write(dest_mesh)
+        self.nav_mesh.read(dest_mesh)
 
         print 'Creating display...'
         pygame.init()
