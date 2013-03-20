@@ -111,7 +111,7 @@ class Loop(object):
         self.nav_mesh = NavMesh()
         self.nav_mesh.create_from_grid(self.nav_grid, max_area_size, max_area_size_merged)
         self.nav_mesh.write(dest_mesh)
-        self.nav_mesh.read(dest_mesh)
+        #self.nav_mesh.read(dest_mesh)
 
         print 'Creating display...'
         pygame.init()
