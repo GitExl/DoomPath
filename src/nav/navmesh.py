@@ -8,7 +8,8 @@ import struct
 
 MESH_FILE_ID = 'DPMESH'
 MESH_FILE_VERSION = 1
-MESH_FILE_HEADER = struct.Struct('<6sII')
+MESH_FILE_HEADER = struct.Struct('<6sI')
+MESH_FILE_AREAS_HEADER = struct.Struct('<I')
 MESH_FILE_AREA = struct.Struct('<ihhhhhihIH')
 MESH_FILE_AREA_CONNECTION = struct.Struct('<i')
 MESH_FILE_PLANES_HEADER = struct.Struct('<I')
@@ -353,52 +354,33 @@ class NavMesh(object):
     
     def write(self, filename):
         with open(filename, 'wb') as f:
-            header_data = MESH_FILE_HEADER.pack(MESH_FILE_ID, MESH_FILE_VERSION, len(self.areas))
+            header_data = MESH_FILE_HEADER.pack(MESH_FILE_ID, MESH_FILE_VERSION)
             f.write(header_data)
             
             # Generate a list of area subdata.
-            areas = []
-            planes = {}
-            connections = {}
+            area_hashes = []
+            plane_hashes = {}
+            connection_hashes = {}
             for area in self.areas:
-                areas.append(hash(area))
+                area_hashes.append(hash(area))
                 
                 if area.plane is not None:
-                    planes[hash(area.plane)] = area.plane
+                    plane_hashes[hash(area.plane)] = area.plane
                 
                 for connection in area.connections:
-                    connections[hash(connection)] = connection
-            
-            # Write area data.
-            for index, area in enumerate(self.areas):
-                if area.sector is None:
-                    sector_index = -1
-                else:
-                    sector_index = area.sector
-                    
-                if area.plane is not None:
-                    plane_hash = hash(area.plane)
-                else:
-                    plane_hash = 0
-                    
-                area_data = MESH_FILE_AREA.pack(areas[index], area.x1, area.y1, area.x2, area.y2, area.z, plane_hash, sector_index, area.flags, len(area.connections))
-                f.write(area_data)
-                
-                for connection in area.connections:
-                    connection_data = MESH_FILE_AREA_CONNECTION.pack(hash(connection))
-                    f.write(connection_data)
+                    connection_hashes[hash(connection)] = connection
             
             # Write plane data.
-            planes_header = MESH_FILE_PLANES_HEADER.pack(len(planes))
+            planes_header = MESH_FILE_PLANES_HEADER.pack(len(plane_hashes))
             f.write(planes_header)
-            for plane_hash, plane in planes.iteritems():
+            for plane_hash, plane in plane_hashes.iteritems():
                 plane_data = MESH_FILE_PLANE.pack(plane_hash, plane.a, plane.b, plane.c, plane.d, plane.invc)
                 f.write(plane_data)
             
             # Write connection data.
-            connections_header = MESH_FILE_CONNECTIONS_HEADER.pack(len(connections))
+            connections_header = MESH_FILE_CONNECTIONS_HEADER.pack(len(connection_hashes))
             f.write(connections_header)
-            for connection_hash, connection in connections.iteritems():
+            for connection_hash, connection in connection_hashes.iteritems():
                 if connection.area_a is not None:
                     area_a_hash = hash(connection.area_a)
                 else:
@@ -410,11 +392,32 @@ class NavMesh(object):
                     
                 connection_data = MESH_FILE_CONNECTION.pack(connection_hash, connection.x1, connection.y1, connection.x2, connection.y2, area_a_hash, area_b_hash, connection.flags)
                 f.write(connection_data)
-    
+            
+            # Write area data.
+            areas_header = MESH_FILE_AREAS_HEADER.pack(len(area_hashes))
+            f.write(areas_header)
+            for index, area in enumerate(self.areas):
+                if area.sector is None:
+                    sector_index = -1
+                else:
+                    sector_index = area.sector
+                    
+                if area.plane is not None:
+                    plane_hash = hash(area.plane)
+                else:
+                    plane_hash = 0
+                    
+                area_data = MESH_FILE_AREA.pack(area_hashes[index], area.x1, area.y1, area.x2, area.y2, area.z, plane_hash, sector_index, area.flags, len(area.connections))
+                f.write(area_data)
+                
+                for connection in area.connections:
+                    connection_data = MESH_FILE_AREA_CONNECTION.pack(hash(connection))
+                    f.write(connection_data)
+                
     
     def read(self, filename):
         with open(filename, 'rb') as f:
-            file_id, file_version, area_count = MESH_FILE_HEADER.unpack(f.read(MESH_FILE_HEADER.size))
+            file_id, file_version = MESH_FILE_HEADER.unpack(f.read(MESH_FILE_HEADER.size))
             if file_id != MESH_FILE_ID:
                 print 'Invalid mesh file.'
                 return
@@ -423,49 +426,58 @@ class NavMesh(object):
                 return
             
             area_hashes = {}
+            plane_hashes = {}
+            connection_hashes = {}
             self.areas = []
             
-            for index in range(area_count):
-                area_hash, x1, y1, x2, y2, z, has_plane, sector_index, flags, connection_count = MESH_FILE_AREA.unpack(f.read(MESH_FILE_AREA.size))
-                area_hashes[index] = area_hash
+            # Read planes.
+            planes_count = MESH_FILE_PLANES_HEADER.unpack(f.read(MESH_FILE_PLANES_HEADER.size))[0]
+            for _ in range(planes_count):
+                plane = Plane()
+                plane_hash, plane.a, plane.b, plane.c, plane.d, plane.invc = MESH_FILE_PLANE.unpack(f.read(MESH_FILE_PLANE.size))
+                plane_hashes[plane_hash] = plane
+            
+            # Read area connections.
+            connections_count = MESH_FILE_CONNECTIONS_HEADER.unpack(f.read(MESH_FILE_CONNECTIONS_HEADER.size))[0]
+            for _ in range(connections_count):
+                connection = NavConnection()
+                connection_hash, x1, y1, x2, y2, area_a_hash, area_b_hash, flags = MESH_FILE_CONNECTION.unpack(f.read(MESH_FILE_CONNECTION.size))
+                connection.x1 = x1
+                connection.y1 = y1
+                connection.x2 = x2
+                connection.y2 = y2
+                connection.area_a = area_a_hash
+                connection.area_b = area_b_hash
+                connection.flags = flags
+                connection_hashes[connection_hash] = connection
+            
+            # Read mesh areas.
+            area_count = MESH_FILE_AREAS_HEADER.unpack(f.read(MESH_FILE_AREAS_HEADER.size))[0]
+            for _ in range(area_count):
+                area_hash, x1, y1, x2, y2, z, plane_hash, sector_index, flags, connection_count = MESH_FILE_AREA.unpack(f.read(MESH_FILE_AREA.size))
                 
                 area = NavArea(x1, y1, x2, y2, z)
                 if sector_index == -1:
                     sector_index = None
                 area.sector = sector_index
                 area.flags = flags
-                
-                if has_plane == True:
-                    plane = Plane()
-                    plane.a, plane.b, plane.c, plane.d, plane.invc = MESH_FILE_PLANE.unpack(f.read(MESH_FILE_PLANE.size))
+                if plane_hash != 0:
+                    area.plane = plane_hashes[plane_hash]
                 
                 for _ in range(connection_count):
-                    connection = NavConnection()
-                    x1, y1, x2, y2, area_hash_a, area_hash_b, flags = MESH_FILE_CONNECTION.unpack(f.read(MESH_FILE_CONNECTION.size))
-                    connection.x1 = x1
-                    connection.y1 = y1
-                    connection.x2 = x2
-                    connection.y2 = y2
-                    connection.flags = flags
-                    
-                    if area_hash_a != 0:
-                        connection.area_a = area_hash_a
-                    else:
-                        connection.area_a = None
-                    if area_hash_b != 0:
-                        connection.area_b = area_hash_b
-                    else:
-                        connection.area_b = None
-                        
-                    area.connections.append(connection)
+                    connection_hash = MESH_FILE_AREA_CONNECTION.unpack(f.read(MESH_FILE_AREA_CONNECTION.size))[0]
+                    area.connections.append(connection_hashes[connection_hash])
                 
                 self.areas.append(area)
                 area_hashes[area_hash] = area
             
-            # Link area hashes.
-            for area in self.areas:
-                for connection in area.connections:
-                    if connection.area_a is not None:
-                        connection.area_a = area_hashes[connection.area_a]
-                    if connection.area_b is not None:
-                        connection.area_b = area_hashes[connection.area_b]
+            # Set connection objects. 
+            for connection in connection_hashes.itervalues():
+                if connection.area_a != 0:
+                    connection.area_a = area_hashes[connection.area_a]
+                else:
+                    connection.area_a = None
+                if connection.area_b != 0:
+                    connection.area_b = area_hashes[connection.area_b]
+                else:
+                    connection.area_b = None
