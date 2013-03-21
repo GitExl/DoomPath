@@ -1,6 +1,27 @@
 DoomPath navigation mesh file format
 ====================================
 
+Terminology
+-----------
+char	1 byte unsigned.
+int16	2 bytes signed.
+uint16	2 bytes unsigned.
+int32 	4 bytes signed.
+uint32	4 bytes unsigned.
+float	4 byte IEEE float.
+hash	a unique value, to be replaced by an actual object representation during load time.
+
+Overview
+--------
+A DoomPath navigation mesh consists of rectangular areas that describe where a pathfinding algorithm can move through. These areas are connected together through one or unidirectional connections.
+
+File format
+-----------
+1. Header
+2. Plane data
+3. Connection data
+4. Area data
+
 Header
 ------
 char[6]	"DPMESH"
@@ -8,6 +29,8 @@ uint16	Mesh file version. (1)
 
 Planes
 ------
+Planes describe a 3d plane that makes up a sector floor. These are used by mesh areas that are located on a sloped floor.
+
 uint32	Number of plane objects.
 ...		Plane object data.
 
@@ -18,10 +41,12 @@ float	a
 float	b
 float	c
 float	d
-float	inverse c
+float	inverse of c
 
 Connections
 -----------
+Connections link two mesh areas together.
+
 uint32	Number of connection objects
 ...		Connection object data.
 
@@ -38,12 +63,14 @@ uint32	Flags.
 
 Connection flags
 ----------------
-CONNECTION_FLAG_AB = 0x1
-CONNECTION_FLAG_BA = 0x2
-CONNECTION_FLAG_TELEPORTER = 0x4
+Link area_a to area_b			CONNECTION_FLAG_AB = 0x1
+Link area_b to area_a			CONNECTION_FLAG_BA = 0x2
+This is a teleporter entrance	CONNECTION_FLAG_TELEPORTER = 0x4
 
 Areas
 -----
+An area describes a rectanglar area of the navigation mesh through which pathfinding can move freely. Areas are connected to other areas by use of connections. An area's floor can be described by plane data, or can be entirely flat if no plane is described.
+
 uint32	Number of area objects.
 ...		Area object data.
 
@@ -55,8 +82,8 @@ int16	Y1
 int16	X2
 int16	Y2
 int16	Absolute Z height
-int32	Plane object hash value.
-int16	Special sector index that this area is a part of.
+int32	Plane object hash value. If 0, this area has no plane data and is considered to be flat.
+int16	Special sector index that this area is a part of. -1 if no sector is referenced. See Special sectors.
 uint32	Flags.
 uint16 	Number of connection objects.
 ...		Connection object data.
@@ -67,10 +94,14 @@ int32	Connection object hash value.
 
 Area flags
 ----------
-FLAG_DAMAGE_LOW = 0x0001
-FLAG_DAMAGE_MEDIUM = 0x0002
-FLAG_DAMAGE_HIGH = 0x0004
-FLAG_JUMP_NORTH = 0x0008
-FLAG_JUMP_EAST = 0x0010
-FLAG_JUMP_SOUTH = 0x0020
-FLAG_JUMP_WEST = 0x0040
+Low damaging floor 		FLAG_DAMAGE_LOW = 0x0001
+Medium damaging floor 	FLAG_DAMAGE_MEDIUM = 0x0002
+High damaging floor 	FLAG_DAMAGE_HIGH = 0x0004
+Can jump north 			FLAG_JUMP_NORTH = 0x0008
+Can jump east 			FLAG_JUMP_EAST = 0x0010
+Can jump south 			FLAG_JUMP_SOUTH = 0x0020
+Can jump west 			FLAG_JUMP_WEST = 0x0040
+
+Special sectors
+---------------
+Some areas refer to a sector index. Areas with a sector reference may have a moving floor or ceiling during gameplay, and should be evaluated for walkability everytime the area is encountered during pathfinding.
