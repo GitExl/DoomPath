@@ -8,7 +8,7 @@ import struct
 
 MESH_FILE_ID = 'DPMESH'
 MESH_FILE_VERSION = 1
-MESH_FILE_HEADER = struct.Struct('<6sI')
+MESH_FILE_HEADER = struct.Struct('<6sH')
 MESH_FILE_AREAS_HEADER = struct.Struct('<I')
 MESH_FILE_AREA = struct.Struct('<ihhhhhihIH')
 MESH_FILE_AREA_CONNECTION = struct.Struct('<i')

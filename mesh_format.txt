@@ -1,0 +1,76 @@
+DoomPath navigation mesh file format
+====================================
+
+Header
+------
+char[6]	"DPMESH"
+uint16	Mesh file version. (1)
+
+Planes
+------
+uint32	Number of plane objects.
+...		Plane object data.
+
+Plane
+-----
+int32	Plane object hash value.
+float	a
+float	b
+float	c
+float	d
+float	inverse c
+
+Connections
+-----------
+uint32	Number of connection objects
+...		Connection object data.
+
+Connection
+----------
+int32	Connection object hash value.
+int16	X1
+int16	Y1
+int16	X2
+int16	Y2
+int32	Area A object hash value.
+int32	Area B object hash value.
+uint32	Flags.
+
+Connection flags
+----------------
+CONNECTION_FLAG_AB = 0x1
+CONNECTION_FLAG_BA = 0x2
+CONNECTION_FLAG_TELEPORTER = 0x4
+
+Areas
+-----
+uint32	Number of area objects.
+...		Area object data.
+
+Area
+----
+int32	Area object hash value.
+int16	X1
+int16	Y1
+int16	X2
+int16	Y2
+int16	Absolute Z height
+int32	Plane object hash value.
+int16	Special sector index that this area is a part of.
+uint32	Flags.
+uint16 	Number of connection objects.
+...		Connection object data.
+
+Area connection
+---------------
+int32	Connection object hash value.
+
+Area flags
+----------
+FLAG_DAMAGE_LOW = 0x0001
+FLAG_DAMAGE_MEDIUM = 0x0002
+FLAG_DAMAGE_HIGH = 0x0004
+FLAG_JUMP_NORTH = 0x0008
+FLAG_JUMP_EAST = 0x0010
+FLAG_JUMP_SOUTH = 0x0020
+FLAG_JUMP_WEST = 0x0040
