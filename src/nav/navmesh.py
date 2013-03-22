@@ -219,27 +219,28 @@ class NavMesh(object):
             
             # Select a grid element on the current side.
             if side == SIDE_TOP:
-                ex, ey = x1, y1 + 1
+                ex, ey = x1 + 1, y1 + 1
+                direction = DIRECTION_UP
             elif side == SIDE_RIGHT:
-                ex, ey = x2 - 1, y1
+                ex, ey = x2 - 1, y2 - 1
+                direction = DIRECTION_RIGHT
             elif side == SIDE_BOTTOM:
-                ex, ey = x1, y2 - 1
+                ex, ey = x2 - 1, y2 - 1
+                direction = DIRECTION_DOWN
             elif side == SIDE_LEFT:
-                ex, ey = x1 + 1, y1
-            
+                ex, ey = x1 + 1, y1 + 1
+                direction = DIRECTION_LEFT
             ex, ey = self.nav_grid.map_to_element(ex, ey)
-            element = self.nav_grid.get_element(ex, ey, area.z)
+            
+            # Find the element in this area.
+            for element in area.elements:
+                if element.x == ex and element.y == ey:
+                    break
+            else:
+                continue
             
             # Select the connected element on the current side.
-            if side == SIDE_TOP:
-                element = element.elements[DIRECTION_UP]
-            elif side == SIDE_RIGHT:
-                element = element.elements[DIRECTION_RIGHT]
-            elif side == SIDE_BOTTOM:
-                element = element.elements[DIRECTION_DOWN]
-            elif side == SIDE_LEFT:
-                element = element.elements[DIRECTION_LEFT]
-            
+            element = element.elements[direction]
             if element is None:
                 continue
             
@@ -285,7 +286,7 @@ class NavMesh(object):
             elif side == SIDE_LEFT:
                 merge_area.x2 = area.x2
                 
-            # Merge the area elements.
+            # Merge the area element lists.
             merge_area.elements.extend(area.elements)
             for element in area.elements:
                 element.area = merge_area
