@@ -219,16 +219,27 @@ class NavMesh(object):
             
             # Select a grid element on the current side.
             if side == SIDE_TOP:
-                ex, ey = x1, y1 - self.nav_grid.element_size
+                ex, ey = x1, y1 + 1
             elif side == SIDE_RIGHT:
-                ex, ey = x2 + self.nav_grid.element_size, y1
+                ex, ey = x2 - 1, y1
             elif side == SIDE_BOTTOM:
-                ex, ey = x1, y2 + self.nav_grid.element_size
+                ex, ey = x1, y2 - 1
             elif side == SIDE_LEFT:
-                ex, ey = x1 - self.nav_grid.element_size, y1
+                ex, ey = x1 + 1, y1
             
             ex, ey = self.nav_grid.map_to_element(ex, ey)
             element = self.nav_grid.get_element(ex, ey, area.z)
+            
+            # Select the connected element on the current side.
+            if side == SIDE_TOP:
+                element = element.elements[DIRECTION_UP]
+            elif side == SIDE_RIGHT:
+                element = element.elements[DIRECTION_RIGHT]
+            elif side == SIDE_BOTTOM:
+                element = element.elements[DIRECTION_DOWN]
+            elif side == SIDE_LEFT:
+                element = element.elements[DIRECTION_LEFT]
+            
             if element is None:
                 continue
             
@@ -238,9 +249,7 @@ class NavMesh(object):
                 continue
             
             # Ignore areas that do not have similar contents.
-            element_a = area.elements[0]
-            element_b = merge_area.elements[0]
-            if not (element_a.is_similar(element_b)):
+            if not (area.elements[0].is_similar(merge_area.elements[0])):
                 continue
             
             # See if the two areas have matching opposite sides.
