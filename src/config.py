@@ -50,10 +50,14 @@ class Config(object):
         self.tag_activation_specials = data['tag_activation_specials']
         self.stair_specials = data['stair_specials']
         self.start_thing_types = data['start_thing_types']
+        self.thing_teleport_specials = data['thing_teleport_specials']
+        self.line_teleport_specials = data['line_teleport_specials']
         
         # Optional settings.
         self.slope_special = data.get('slope_special')
         self.slope_steep = data.get('slope_steep')
         self.bridge_custom_type = data.get('bridge_custom_type')
         self.threedfloor_special = data.get('threedfloor_special')
-        self.generalized_specials = data.get('generalized_specials') 
+        self.generalized_specials = data.get('generalized_specials')
+        self.teleport_thing_type = data.get('teleport_thing_type') 
+        self.set_identification_special = data.get('set_identification_special')

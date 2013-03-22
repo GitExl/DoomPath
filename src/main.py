@@ -49,9 +49,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/veloctfx.wad'
-        source_map = 'MAP26'
-        dest_mesh = 'test/veloctfx_map26.dpm'
+        source_wad = 'test/doom.wad'
+        source_map = 'E2M1'
+        dest_mesh = 'test/doom_e2m1.dpm'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -108,8 +108,8 @@ class Loop(object):
         self.nav_grid.create_walkable_elements(self.config)
             
         print 'Generating navigation mesh...'
-        self.nav_mesh = NavMesh()
-        self.nav_mesh.create_from_grid(self.nav_grid, max_area_size, max_area_size_merged)
+        self.nav_mesh = NavMesh(self.map_data, self.config, self.nav_grid)
+        self.nav_mesh.create_from_grid(max_area_size, max_area_size_merged)
         self.nav_mesh.write(dest_mesh)
         self.nav_mesh.read(dest_mesh)
 

@@ -1,4 +1,5 @@
 from doom.mapenum import *
+from nav import navconnection
 from nav.navenum import DIRECTION_RANGE, DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT
 import pygame
 
@@ -22,36 +23,50 @@ def render_connections(nav_mesh, surface, camera, x, y):
     
     for area in nav_mesh.areas:
         for connection in area.connections:
-            rx, ry = camera.map_to_screen(connection.x1, connection.y1)
-            width, height = ((connection.x2 - connection.x1) * camera.zoom, (connection.y2 - connection.y1) * camera.zoom)
-            
-            rx += 1
-            ry += 1
-            width -= 1
-            height -= 1
-            
-            if rx < 0:
-                width -= abs(rx)
-                rx = 0
-            if ry < 0:
-                height -= abs(ry)
-                ry = 0
-            if rx + width >= surface.get_width():
-                width = surface.get_width() - rx
-            if ry + height >= surface.get_height():
-                height = surface.get_height() - ry
+            if (connection.flags & navconnection.CONNECTION_FLAG_TELEPORTER) != 0:
+                x1, y1 = camera.map_to_screen(connection.x1, connection.y1)
+                x2, y2 = camera.map_to_screen(connection.x2, connection.y2)
                 
-            if width < 1 or height < 1:
-                continue
-
-            if x >= connection.x1 and y >= connection.y1 and x < connection.x2 and y < connection.y2:
-                color = COLOR_ACTIVE
-                connections.add(connection)
+                if x >= connection.x1 - 2 and y >= connection.y1 - 2 and x < connection.x2 + 2 and y < connection.y2 + 2:
+                    color = COLOR_ACTIVE
+                    connections.add(connection)
+                else:
+                    color = COLOR_FILL
+                    
+                size = int(4 * camera.zoom)
+                pygame.draw.line(surface, color, (x1, y1), (x2, y2), size)
+                
             else:
-                color = COLOR_FILL
+                rx, ry = camera.map_to_screen(connection.x1, connection.y1)
+                width, height = ((connection.x2 - connection.x1) * camera.zoom, (connection.y2 - connection.y1) * camera.zoom)
                 
-            rect = pygame.Rect(rx, ry, width, height)
-            surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
+                rx += 1
+                ry += 1
+                width -= 1
+                height -= 1
+                
+                if rx < 0:
+                    width -= abs(rx)
+                    rx = 0
+                if ry < 0:
+                    height -= abs(ry)
+                    ry = 0
+                if rx + width >= surface.get_width():
+                    width = surface.get_width() - rx
+                if ry + height >= surface.get_height():
+                    height = surface.get_height() - ry
+                    
+                if width < 1 or height < 1:
+                    continue
+    
+                if x >= connection.x1 and y >= connection.y1 and x < connection.x2 and y < connection.y2:
+                    color = COLOR_ACTIVE
+                    connections.add(connection)
+                else:
+                    color = COLOR_FILL
+                    
+                rect = pygame.Rect(rx, ry, width, height)
+                surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
             
     return connections
 

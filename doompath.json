@@ -30,6 +30,12 @@
 		"stair_specials": [
 			258, 7, 256, 8, 259, 127, 257, 100
 		],
+		"thing_teleport_specials": [
+			195, 174, 97, 39, 210, 209, 208, 207
+		],
+		"line_teleport_specials": [
+			244, 243, 263, 262
+		],
 		
 		"sector_types": {
 			"4": "damage20",
@@ -49,6 +55,7 @@
 		"slope_special": 340,
 		"slope_steep": 0.707122802734375,
 		
+		"teleport_thing_type": 14,
 		"start_thing_types": [
 		    1, 2, 3, 4,	11, 14, 4001, 4002, 4003, 4004, 5080, 5081, 9043, 9044
 		],
@@ -122,6 +129,12 @@
 		"stair_specials": [
 			26, 27, 31, 32, 204, 217
 		],
+		"thing_teleport_specials": [
+			39, 70, 71, 76, 77, 154
+		],
+		"line_teleport_specials": [
+			215
+		],
 		
 		"sector_types": {
 			"68": "damage20",
@@ -144,6 +157,7 @@
 			"768": "damage20"
 		},
 		
+		"set_identification_special": 121,
 		"threedfloor_special": 160,
 		"slope_special": 181,
 		"slope_steep": 0.707122802734375,

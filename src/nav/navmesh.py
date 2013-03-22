@@ -1,4 +1,7 @@
+from doom.mapenum import LINEDEF_VERTEX_1, LINEDEF_VERTEX_2, VERTEX_X, VERTEX_Y, LINEDEF_HEXEN_ARG0, LINEDEF_HEXEN_ARG1, \
+    LINEDEF_DOOM_TAG
 from doom.plane import Plane
+from doom.trig import box_intersects_line
 from nav import navconnection, navarea
 from nav.navarea import NavArea
 from nav.navconnection import NavConnection
@@ -20,23 +23,25 @@ MESH_FILE_CONNECTION = struct.Struct('<ihhhhiiI')
 
 class NavMesh(object):
     
-    def __init__(self):
+    def __init__(self, map_data, config, nav_grid):
         self.areas = []
-        self.nav_grid = None
+        
+        self.map_data = map_data
+        self.nav_grid = nav_grid
+        self.config = config
 
 
-    def create_from_grid(self, nav_grid, max_area_size, max_area_size_merged):
+    def create_from_grid(self, max_area_size, max_area_size_merged):
         self.max_area_size = max_area_size
         self.max_area_size_merged = max_area_size_merged
         
-        self.nav_grid = nav_grid
         self.max_size_elements = self.max_area_size / self.nav_grid.element_size
         
         # Determine the locations where to test for elements.
-        left = nav_grid.map_data.min_x / nav_grid.element_size
-        top = nav_grid.map_data.min_y / nav_grid.element_size
-        right = left + nav_grid.width
-        bottom = top + nav_grid.height
+        left = self.nav_grid.map_data.min_x / self.nav_grid.element_size
+        top = self.nav_grid.map_data.min_y / self.nav_grid.element_size
+        right = left + self.nav_grid.width
+        bottom = top + self.nav_grid.height
         
         min_side = self.max_size_elements
         while min_side > 0:
@@ -62,8 +67,73 @@ class NavMesh(object):
         count = self.connect_areas()
         print 'Generated {} connections.'.format(count)
         
+        print 'Connecting teleporters...'
+        self.connect_teleporters()
+        
         return True
 
+
+    def get_area(self, x, y):
+        for area in self.areas:
+            if x >= area.x1 and x <= area.x2 and y >= area.y1 and y <= area.y2:
+                return area
+        
+        return None
+    
+    
+    def get_areas_intersecting(self, x1, y1, x2, y2):
+        areas = []
+        for area in self.areas:
+            if box_intersects_line(area.x1, area.y1, area.x2, area.y2, x1, y1, x2, y2) == True:
+                areas.append(area)
+        
+        return areas
+
+
+    def connect_teleporters(self):
+        """
+        Creates area connections for teleporter line types.
+        """
+        
+        for index, linedef in enumerate(self.map_data.linedefs):
+            target_area = None
+            
+            # Line to thing teleporters.
+            if linedef[self.map_data.LINEDEF_ACTION] in self.config.thing_teleport_specials:
+                target_thing = self.map_data.get_destination_from_teleport(index)
+                x = target_thing[self.map_data.THING_X]
+                y = target_thing[self.map_data.THING_Y]
+                target_area = self.get_area(x, y)
+                
+            # Line to line teleporters.
+            # Only the destination line's center area is used as the destination.
+            elif linedef[self.map_data.LINEDEF_ACTION] in self.config.line_teleport_specials:
+                target_line = self.map_data.get_line_destination(index)
+                x, y = self.map_data.get_line_center(target_line)
+                target_area = self.get_area(x, y)
+            
+            # Place a teleporter connection in all source areas if one was found.
+            if target_area is not None:
+                vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
+                vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
+                x1 = vertex1[VERTEX_X]
+                y1 = vertex1[VERTEX_Y]
+                x2 = vertex2[VERTEX_X]
+                y2 = vertex2[VERTEX_Y]
+                
+                areas = self.get_areas_intersecting(x1, y1, x2, y2)
+                for area in areas:
+                    connection = NavConnection()
+                    connection.x1 = x1
+                    connection.y1 = y1
+                    connection.x2 = x2
+                    connection.y2 = y2
+                    connection.area_a = area
+                    connection.area_b = target_area
+                    connection.flags = navconnection.CONNECTION_FLAG_AB | navconnection.CONNECTION_FLAG_TELEPORTER
+                    
+                    area.connections.append(connection)
+                
 
     def prune_elements(self):
         """

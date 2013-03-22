@@ -70,6 +70,7 @@ class MapData(object):
     
 
     def __init__(self, wad_file, lumpname):
+        # Raw map data.
         self.vertices = None
         self.linedefs = None
         self.sectors = None
@@ -80,13 +81,17 @@ class MapData(object):
         self.segments = None
         self.blockmap = None        
 
+        # Additional map data, generated from raw data.
         self.subsector_sectors = None
         self.sector_extra = None
+        self.linedef_ids = None
 
         self.nodes_data = None
         
+        # If True, this map is stored in Hexen format, Doom format otherwise.
         self.is_hexen = False
 
+        # Map bounds.
         self.min_x = 0x80000
         self.max_x = 0
         self.min_y = 0x80000
@@ -493,6 +498,14 @@ class MapData(object):
         Analyzes the map and marks sectors that are going to move during gameplay.
         """ 
         
+        # Detect linedefs with an id.
+        if self.is_hexen == True:
+            self.linedef_ids = {}
+            for index, linedef in enumerate(self.linedefs):
+                if linedef[self.LINEDEF_ACTION] == self.config.set_identification_special:
+                    line_id = linedef[LINEDEF_HEXEN_ARG0] + (linedef[LINEDEF_HEXEN_ARG4] * 256)
+                    self.linedef_ids[line_id] = index
+        
         # Detect tagged and special sectors, these are likely going to move.
         for sector_index, sector in enumerate(self.sectors):
             special = sector[SECTOR_SPECIAL]
@@ -697,3 +710,119 @@ class MapData(object):
             return self.sectors[sector_index][SECTOR_CEILZ]
         else:
             return plane.get_z(x, y)
+    
+    
+    def get_destination_from_teleport(self, line_index):
+        """
+        Returns a teleport destination thing for a linedef that has a teleport special,
+        or None if the teleport is not valid.
+        """
+        
+        linedef = self.linedefs[line_index]
+        
+        # Hexen style teleporters can have a TID target and a sector tag.
+        if self.is_hexen == True:
+            dest_tid = linedef[LINEDEF_HEXEN_ARG0]
+            dest_tag = linedef[LINEDEF_HEXEN_ARG1]
+            if dest_tag <= 0:
+                dest_tag = None
+            
+            target_thing = self.get_tid_in_sector(dest_tid, dest_tag)
+        
+        # Doom style teleporters teleport to a fixed thing type in a tagged sector.
+        else:
+            dest_tag = linedef[LINEDEF_DOOM_TAG]
+            target_thing = self.get_thingtype_in_sector(dest_tag, self.config.teleport_thing_type) 
+        
+        return target_thing
+
+    
+    def get_tid_in_sector(self, tid, sector_tag=None):
+        """
+        Returns a thing with the specified thing ID in the specified sector,
+        or None if the thing could not be found.
+        
+        @param sector_tag: the sector tag that the thing should be in.
+        @param tid: the thing ID of the thing to look for.
+        """
+        
+        for thing in self.things:
+            if thing[THING_HEXEN_ID] != tid:
+                continue
+
+            if sector_tag is not None:
+                thing_sector_index = self.get_sector(thing[self.THING_X], thing[self.THING_Y])
+                if self.sectors[thing_sector_index][SECTOR_TAG] == sector_tag:
+                    return thing
+            else:
+                return thing
+            
+        return None
+            
+    
+    def get_thingtype_in_sector(self, sector_tag, thing_type):
+        """
+        Returns a thing with of the specified type in the specified sector,
+        or None if the thing could not be found.
+        
+        @param sector_tag: the sector tag that the thing should be in.
+        @param thing_type: the thing type of the thing to look for.
+        """
+        
+        for thing in self.things:
+            if thing[self.THING_TYPE] != thing_type:
+                continue
+
+            thing_sector_index = self.get_sector(thing[self.THING_X], thing[self.THING_Y])
+            if self.sectors[thing_sector_index][SECTOR_TAG] == sector_tag:
+                return thing
+        
+        return None
+    
+    
+    def get_line_destination(self, source_index):
+        """
+        Returns a linedef that is the destination of a line to line teleport special linedef.
+        Returns None if no destination could be found.
+        """
+        
+        linedef = self.linedefs[source_index]
+        
+        dest_line = None
+        if self.is_hexen == True:
+            dest_id = linedef[LINEDEF_HEXEN_ARG1]
+            dest_line = self.linedef_ids.get(dest_id)
+        else:
+            dest_tag = linedef[LINEDEF_DOOM_TAG]
+            dest_line = self.get_linedef_by_tag(dest_tag)
+            
+        return dest_line 
+    
+    
+    def get_linedef_by_tag(self, tag):
+        """
+        Returns the first linedef with the specified tag, or None of the linedef could not be found.
+        """
+        
+        for linedef in self.linedefs:
+            if linedef[LINEDEF_DOOM_TAG] == tag:
+                return linedef
+            
+        return None
+    
+    
+    def get_line_center(self, line_index):
+        """
+        Returns the center x and y coordinates of the specified linedef index.
+        """
+        
+        linedef = self.linedefs[line_index]
+        vertex1 = self.vertices[linedef[LINEDEF_VERTEX_1]]
+        vertex2 = self.vertices[linedef[LINEDEF_VERTEX_2]]
+        
+        x1 = vertex1[VERTEX_X]
+        y1 = vertex1[VERTEX_Y]
+        x2 = vertex2[VERTEX_X]
+        y2 = vertex2[VERTEX_Y]
+        
+        return int(x2 - x1 / 2), int(y2 - y1 / 2)
