@@ -16,8 +16,10 @@ grid_colors_special = None
 
 
 def render_connections(nav_mesh, surface, camera, x, y):
-    COLOR_FILL = pygame.Color(7, 23, 31, 255)
+    COLOR_RECTANGLE = pygame.Color(7, 23, 31, 255)
+    COLOR_TELEPORT = pygame.Color(31, 191, 95, 255)
     COLOR_ACTIVE = pygame.Color(255, 47, 63, 255)
+    TELEPORT_SIZE = 6    
     
     connections = set()
     
@@ -27,14 +29,21 @@ def render_connections(nav_mesh, surface, camera, x, y):
                 x1, y1 = camera.map_to_screen(connection.x1, connection.y1)
                 x2, y2 = camera.map_to_screen(connection.x2, connection.y2)
                 
-                if x >= connection.x1 - 2 and y >= connection.y1 - 2 and x < connection.x2 + 2 and y < connection.y2 + 2:
+                if x >= connection.x1 - TELEPORT_SIZE and y >= connection.y1 - TELEPORT_SIZE and x <= connection.x2 + TELEPORT_SIZE and y <= connection.y2 + TELEPORT_SIZE:
                     color = COLOR_ACTIVE
                     connections.add(connection)
+                    active = True
                 else:
-                    color = COLOR_FILL
+                    color = COLOR_TELEPORT
+                    active = False
                     
-                size = int(4 * camera.zoom)
+                size = int(TELEPORT_SIZE * camera.zoom)
                 pygame.draw.line(surface, color, (x1, y1), (x2, y2), size)
+                
+                if active == True:
+                    sx, sy = camera.map_to_screen(connection.x1 + (connection.x2 - connection.x1) / 2, connection.y1 + (connection.y2 - connection.y1) / 2)
+                    dx, dy = camera.map_to_screen(connection.area_b.x1 + (connection.area_b.x2 - connection.area_b.x1) / 2, connection.area_b.y1 + (connection.area_b.y2 - connection.area_b.y1) / 2)
+                    pygame.draw.line(surface, COLOR_ACTIVE, (sx, sy), (dx, dy), 1)
                 
             else:
                 rx, ry = camera.map_to_screen(connection.x1, connection.y1)
@@ -63,7 +72,7 @@ def render_connections(nav_mesh, surface, camera, x, y):
                     color = COLOR_ACTIVE
                     connections.add(connection)
                 else:
-                    color = COLOR_FILL
+                    color = COLOR_RECTANGLE
                     
                 rect = pygame.Rect(rx, ry, width, height)
                 surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
