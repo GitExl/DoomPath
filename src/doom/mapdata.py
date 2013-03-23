@@ -47,6 +47,23 @@ class SectorExtra(object):
         self.moves = False
         self.ignore = False
         self.damage = 0
+        
+        
+class Teleporter(object):
+    """
+    Container for teleporter data.
+    """
+    
+    TELEPORTER_THING = 0
+    TELEPORTER_LINE = 1
+    
+    
+    def __init__(self):
+        self.source_line = None
+        self.dest_line = None
+        self.kind = Teleporter.TELEPORTER_THING
+        self.dest_x = 0
+        self.dest_y = 0
 
 
 class MapData(object):
@@ -85,6 +102,7 @@ class MapData(object):
         self.subsector_sectors = None
         self.sector_extra = None
         self.linedef_ids = None
+        self.teleporters = None
 
         self.nodes_data = None
         
@@ -168,11 +186,58 @@ class MapData(object):
         self.setup_sector_data()
         self.calculate_map_size()
         self.analyze()
+        self.setup_lineids()
+        self.build_teleporters()
         
         # Build blockmap.
         self.blockmap = blockmap.BlockMap()
         self.blockmap.generate(self)
+        
+    
+    def build_teleporters(self):
+        """
+        Builds a list of teleporter objects that reference teleport source and destination locations.
+        """
+        
+        self.teleporters = []
+        for line_index, linedef in enumerate(self.linedefs):
+            
+            # Line to thing teleporters.
+            if linedef[self.LINEDEF_ACTION] in self.config.thing_teleport_specials:
+                kind = Teleporter.TELEPORTER_THING
+                target_thing = self.get_destination_from_teleport(line_index)
+                if target_thing is None:
+                    print 'Teleporter linedef {} has no valid destination thing.'.format(line_index)
+                    continue
+                
+                dest_x = target_thing[self.THING_X]
+                dest_y = target_thing[self.THING_Y]
+                
+            # Line to line teleporters.
+            elif linedef[self.LINEDEF_ACTION] in self.config.line_teleport_specials:
+                kind = Teleporter.TELEPORTER_LINE
+                dest_line = self.get_line_destination(line_index)
+                if dest_line is None:
+                    print 'Teleporter linedef {} has no valid destination linedef.'.format(line_index)
+                    continue
 
+            else:
+                continue
+
+            teleporter = Teleporter()
+
+            teleporter.kind = kind        
+            teleporter.source_line = line_index
+            if kind == Teleporter.TELEPORTER_THING:
+                teleporter.dest_x = dest_x
+                teleporter.dest_y = dest_y
+            elif kind == Teleporter.TELEPORTER_LINE:
+                teleporter.dest_line = dest_line
+                
+            self.teleporters.append(teleporter)
+        
+        print self.teleporters
+            
 
     def calculate_map_size(self):
         """
@@ -491,20 +556,25 @@ class MapData(object):
             print 'Unknown sector effect "{}"!'.format(effect)
             
         sector_extra.is_special = True
-        
-    
-    def analyze(self):
+
+
+    def setup_lineids(self):
         """
-        Analyzes the map and marks sectors that are going to move during gameplay.
-        """ 
+        Detect and store linedefs with an id assigned to them.
+        """
         
-        # Detect linedefs with an id.
         if self.is_hexen == True:
             self.linedef_ids = {}
             for index, linedef in enumerate(self.linedefs):
                 if linedef[self.LINEDEF_ACTION] in self.config.line_identification_specials:
                     line_id = linedef[LINEDEF_HEXEN_ARG0] + (linedef[LINEDEF_HEXEN_ARG4] * 256)
                     self.linedef_ids[line_id] = index
+        
+    
+    def analyze(self):
+        """
+        Analyzes the map and marks sectors that are going to move during gameplay.
+        """ 
         
         # Detect tagged and special sectors, these are likely going to move.
         for sector_index, sector in enumerate(self.sectors):

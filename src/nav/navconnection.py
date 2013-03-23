@@ -15,7 +15,7 @@ class NavConnection(object):
         'x1', 'y1',
         'x2', 'y2',
         
-        'area_a', 'area_b',
+        'area_a', 'area_b', 'linedef',
         
         'flags'
     )
@@ -29,6 +29,7 @@ class NavConnection(object):
         
         self.area_a = None
         self.area_b = None
+        self.linedef = None
         
         self.flags = 0
         
@@ -41,4 +42,4 @@ class NavConnection(object):
                 flagstrings.append(flag_names[mask])
         flagstring = ', '.join(flagstrings)
         
-        return 'connection {}'.format(flagstring)
+        return 'connection {}, linedef {}'.format(flagstring, self.linedef)

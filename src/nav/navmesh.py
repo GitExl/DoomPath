@@ -1,3 +1,4 @@
+from doom.mapdata import Teleporter
 from doom.mapenum import LINEDEF_VERTEX_1, LINEDEF_VERTEX_2, VERTEX_X, VERTEX_Y, LINEDEF_HEXEN_ARG0, LINEDEF_HEXEN_ARG1, \
     LINEDEF_DOOM_TAG
 from doom.plane import Plane
@@ -114,36 +115,22 @@ class NavMesh(object):
         Creates area connections for teleporter line types.
         """
         
-        for index, linedef in enumerate(self.map_data.linedefs):
+        for teleporter in self.map_data.teleporters:
             target_area = None
             
-            # Line to thing teleporters.
-            if linedef[self.map_data.LINEDEF_ACTION] in self.config.thing_teleport_specials:
-                target_thing = self.map_data.get_destination_from_teleport(index)
-                if target_thing is None:
-                    print 'Teleporter linedef {} has no valid destination thing.'.format(index)
-                    continue
-                
-                x = target_thing[self.map_data.THING_X]
-                y = target_thing[self.map_data.THING_Y]
-                target_area = self.get_area(x, y)
-                
-            # Line to line teleporters.
-            # Only the destination line's center area is used as the destination.
-            elif linedef[self.map_data.LINEDEF_ACTION] in self.config.line_teleport_specials:
-                target_line = self.map_data.get_line_destination(index)
-                if target_line is None:
-                    print 'Teleporter linedef {} has no valid destination linedef.'.format(index)
-                    continue
-                
-                x, y = self.map_data.get_line_center(target_line)
-                target_area = self.get_area(x, y)
-            
+            if teleporter.kind == Teleporter.TELEPORTER_THING:
+                target_area = self.get_area(teleporter.dest_x, teleporter.dest_y)
+            if teleporter.kind == Teleporter.TELEPORTER_LINE:
+                dest_x, dest_y = self.map_data.get_line_center(teleporter.dest_line)
+                target_area = self.get_area(dest_x, dest_y)
+
             # Ignore missing teleport targets.
             if target_area is None:
+                print 'Teleporter linedef {} does not point to a place on the map with navigation areas.'.format(teleporter.source_line)
                 continue
             
             # Create the teleport connection line from the linedef vertices.
+            linedef = self.map_data.linedefs[teleporter.source_line]
             vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
             vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
             x1 = vertex1[VERTEX_X]
@@ -166,6 +153,7 @@ class NavMesh(object):
                 connection.y2 = y2
                 connection.area_a = area
                 connection.area_b = target_area
+                connection.linedef = teleporter.source_line
                 connection.flags = navconnection.CONNECTION_FLAG_AB | navconnection.CONNECTION_FLAG_TELEPORTER
                 
                 area.connections.append(connection)
