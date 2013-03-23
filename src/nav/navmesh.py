@@ -59,6 +59,9 @@ class NavMesh(object):
                 break
             
             print 'Merged to {} navigation areas.'.format(new_len)
+            
+        print 'Adding areas to blockmap...'
+        self.map_data.blockmap.generate_areas(self)
 
         print 'Pruning elements...'
         self.prune_elements()
@@ -74,7 +77,11 @@ class NavMesh(object):
 
 
     def get_area(self, x, y):
-        for area in self.areas:
+        bx, by = self.map_data.blockmap.map_to_blockmap(x, y)
+        block = self.map_data.blockmap.get(bx, by)
+        
+        for index in block.areas:
+            area = self.areas[index]
             if x >= area.x1 and x <= area.x2 and y >= area.y1 and y <= area.y2:
                 return area
         
@@ -82,8 +89,18 @@ class NavMesh(object):
     
     
     def get_areas_intersecting(self, x1, y1, x2, y2):
+        bx1, by1 = self.map_data.blockmap.map_to_blockmap(x1, y1)
+        bx2, by2 = self.map_data.blockmap.map_to_blockmap(x2, y2)
+        
+        area_indices = []
+        for y in range(by1, by2 + 1):
+            for x in range(bx1, bx2 + 1):
+                block = self.map_data.blockmap.get(x, y)
+                area_indices.extend(block.areas)
+        
         areas = []
-        for area in self.areas:
+        for index in area_indices:
+            area = self.areas[index]
             if box_intersects_line(area.x1, area.y1, area.x2, area.y2, x1, y1, x2, y2) == True:
                 areas.append(area)
         

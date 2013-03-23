@@ -14,11 +14,12 @@ class Block(object):
     A block of map data used by the blockmap.
     """
     
-    __slots__ = ('linedefs', 'things')
+    __slots__ = ('linedefs', 'things', 'areas')
     
     def __init__(self):
         self.linedefs = []
         self.things = []
+        self.areas = []
 
 
 class BlockMap(object):
@@ -76,7 +77,7 @@ class BlockMap(object):
         """
         
         linedefs = []
-        things = []        
+        things = []
         blocks_len = len(self.blocks)
         
         cy = y1
@@ -290,6 +291,31 @@ class BlockMap(object):
                 for x in range(left, right + 1):
                     block = self.blocks[x + y * self.width]
                     block.things.append(index)
+                    
+                    
+    def generate_areas(self, nav_mesh):
+        """
+        Places all mesh areas in the blockmap blocks they occupy.
+        
+        @param nav_mesh: the mesh object to use the areas from.
+        """
+        
+        for index, area in enumerate(nav_mesh.areas):
+            # Convert map bounding box to blockmap bounding box.
+            left, top = self.map_to_blockmap(area.x1, area.y1)
+            right, bottom = self.map_to_blockmap(area.x2, area.y2)
+            
+            # Clip bounding box to blockmap dimensions.
+            left = max(0, left)
+            top = max(0, top)
+            right = min(self.width, right)
+            bottom = min(self.height, bottom)
+            
+            # Fill a box over the blockmap blocks that this thing occupies.
+            for y in range(top, bottom + 1):
+                for x in range(left, right + 1):
+                    block = self.blocks[x + y * self.width]
+                    block.areas.append(index)
         
     
     def generate(self, map_data):
@@ -314,10 +340,15 @@ class BlockMap(object):
         # Generate Block contents.
         self.generate_linedefs(map_data)
         self.generate_things(map_data)
+    
+    
+    def prune_empty(self):
+        """
+        Sets all blocks in this blockmap that do not have any entries to None.
+        """
         
-        # Prune empty blocks.
         for index, block in enumerate(self.blocks):
-            if len(block.linedefs) == 0 and len(block.things) == 0:
+            if len(block.linedefs) == 0 and len(block.things) == 0 and len(block.areas) == 0:
                 self.blocks[index] = None
     
         
