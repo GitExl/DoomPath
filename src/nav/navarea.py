@@ -54,4 +54,4 @@ class NavArea(object):
     
     
     def __repr__(self):
-        return 'area {}x{}, {}x{}, {}, sector {}, width {}, height {}, plane {}, flags {}, connections {}'.format(self.x1, self.y1, self.x2, self.y2, self.z, self.sector, self.x2 - self.x1, self.y2 - self.y1, self.plane, self.flags, len(self.connections)) 
+        return 'area {}, {}, {}, {}, z {}, sector {}, width {}, height {}, plane {}, flags {}, connections {}'.format(self.x1, self.y1, self.x2, self.y2, self.z, self.sector, self.x2 - self.x1, self.y2 - self.y1, self.plane, self.flags, len(self.connections)) 

@@ -75,34 +75,14 @@ class Loop(object):
         print 'Loading {} configuration...'.format(configuration)
         self.config = config.Config('doompath.json', configuration)
         
-        # Build map structures.
         print 'Map setup...'
         self.map_data.setup(self.config)
         
-        # Create empty nav grid.
         print 'Creating navigation grid...'
         self.nav_grid = navgrid.NavGrid(self.map_data, self.config, resolution)
         
-        # Create a list of things that grid generation starts at.
         print 'Placing starting elements...'
-        start_things = []
-        for thing_type in self.config.start_thing_types:
-            start_things.extend(self.map_data.get_thing_list(thing_type))
-        
-        # Add the initial things as initial elements to the nav grid.
-        for thing in start_things:
-            x = thing[self.map_data.THING_X]
-            y = thing[self.map_data.THING_Y]
-            z = self.map_data.get_floor_z(x, y)
-            
-            collision, _ = self.nav_grid.walker.check_position(x, y, z, self.config.player_radius, self.config.player_height)
-            if collision == True:
-                print 'Thing at {}, {} has no room to spawn, ignoring.'.format(x, y)
-                continue
-            
-            self.nav_grid.add_walkable_element(x, y, z)
-            
-        print 'Added {} starting elements.'.format(len(start_things))
+        self.nav_grid.place_starts()
                 
         print 'Detecting walkable space...'
         self.nav_grid.create_walkable_elements(self.config)

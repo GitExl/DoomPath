@@ -1,3 +1,4 @@
+from doom.mapdata import Teleporter
 from doom.mapenum import *
 from nav.navelement import NavElement
 from nav.navenum import *
@@ -80,6 +81,45 @@ class NavGrid(object):
         self.elements.append(element)
         
         return element
+    
+    
+    def place_starts(self):
+        # Create a list of things that grid generation starts at.
+        start_things = []
+        for thing_type in self.config.start_thing_types:
+            start_things.extend(self.map_data.get_thing_list(thing_type))
+        
+        # Add the initial things as initial elements to the nav grid.
+        for thing in start_things:
+            x = thing[self.map_data.THING_X]
+            y = thing[self.map_data.THING_Y]
+            z = self.map_data.get_floor_z(x, y)
+            
+            collision, _ = self.walker.check_position(x, y, z, self.config.player_radius, self.config.player_height)
+            if collision == True:
+                print 'Thing at {}, {} has no room to spawn, ignoring.'.format(x, y)
+                continue
+            
+            self.add_walkable_element(x, y, z)
+        
+        # Add teleporter destinations as starting elements.
+        for teleporter in self.map_data.teleporters:
+            if teleporter.kind == Teleporter.TELEPORTER_THING:
+                x = teleporter.dest_x
+                y = teleporter.dest_y
+            else:
+                x, y = self.map_data.get_line_center(teleporter.dest_line)
+                
+            z = self.map_data.get_floor_z(x, y)  
+            
+            collision, _ = self.walker.check_position(x, y, z, self.config.player_radius, self.config.player_height)
+            if collision == True:
+                print 'Teleporter destination at {}, {} has no room to spawn, ignoring.'.format(x, y)
+                continue
+            
+            self.add_walkable_element(x, y, z)
+        
+        print 'Added {} starting elements.'.format(len(start_things))
     
     
     def remove_pruned_elements(self):

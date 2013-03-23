@@ -235,8 +235,6 @@ class MapData(object):
                 teleporter.dest_line = dest_line
                 
             self.teleporters.append(teleporter)
-        
-        print self.teleporters
             
 
     def calculate_map_size(self):
