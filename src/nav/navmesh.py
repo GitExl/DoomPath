@@ -112,27 +112,36 @@ class NavMesh(object):
                 x, y = self.map_data.get_line_center(target_line)
                 target_area = self.get_area(x, y)
             
-            # Place a teleporter connection in all source areas if one was found.
-            if target_area is not None:
-                vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
-                vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
-                x1 = vertex1[VERTEX_X]
-                y1 = vertex1[VERTEX_Y]
-                x2 = vertex2[VERTEX_X]
-                y2 = vertex2[VERTEX_Y]
+            # Ignore missing teleport targets.
+            if target_area is None:
+                continue
+            
+            # Create the teleport connection line from the linedef vertices.
+            vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
+            vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
+            x1 = vertex1[VERTEX_X]
+            y1 = vertex1[VERTEX_Y]
+            x2 = vertex2[VERTEX_X]
+            y2 = vertex2[VERTEX_Y]
+            
+            if x1 > x2:
+                x1, x2 = x2, x1
+            if y1 > y2:
+                y1, y2 = y2, y1
+
+            # Place a teleporter connection in all source areas.
+            areas = self.get_areas_intersecting(x1, y1, x2, y2)
+            for area in areas:
+                connection = NavConnection()
+                connection.x1 = x1
+                connection.y1 = y1
+                connection.x2 = x2
+                connection.y2 = y2
+                connection.area_a = area
+                connection.area_b = target_area
+                connection.flags = navconnection.CONNECTION_FLAG_AB | navconnection.CONNECTION_FLAG_TELEPORTER
                 
-                areas = self.get_areas_intersecting(x1, y1, x2, y2)
-                for area in areas:
-                    connection = NavConnection()
-                    connection.x1 = x1
-                    connection.y1 = y1
-                    connection.x2 = x2
-                    connection.y2 = y2
-                    connection.area_a = area
-                    connection.area_b = target_area
-                    connection.flags = navconnection.CONNECTION_FLAG_AB | navconnection.CONNECTION_FLAG_TELEPORTER
-                    
-                    area.connections.append(connection)
+                area.connections.append(connection)
                 
 
     def prune_elements(self):

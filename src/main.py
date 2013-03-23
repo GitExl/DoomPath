@@ -176,7 +176,7 @@ class Loop(object):
         connections = None
         elements = None
         
-        sector = self.map_data.get_sector(self.mouse.map_x, self.mouse.map_y)
+        #sector = self.map_data.get_sector(self.mouse.map_x, self.mouse.map_y)
         
         self.screen.fill(COLOR_BACKGROUND)
         
@@ -186,7 +186,7 @@ class Loop(object):
         render.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         areas = render.render_navmesh(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
         connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        state = self.render_collision_box()
+        #state = self.render_collision_box()
         self.render_debug_text(connections, state, elements, areas)
         
         pygame.display.flip()
