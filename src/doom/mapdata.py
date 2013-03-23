@@ -502,7 +502,7 @@ class MapData(object):
         if self.is_hexen == True:
             self.linedef_ids = {}
             for index, linedef in enumerate(self.linedefs):
-                if linedef[self.LINEDEF_ACTION] == self.config.set_identification_special:
+                if linedef[self.LINEDEF_ACTION] in self.config.line_identification_specials:
                     line_id = linedef[LINEDEF_HEXEN_ARG0] + (linedef[LINEDEF_HEXEN_ARG4] * 256)
                     self.linedef_ids[line_id] = index
         
@@ -825,4 +825,4 @@ class MapData(object):
         x2 = vertex2[VERTEX_X]
         y2 = vertex2[VERTEX_Y]
         
-        return int(x2 - x1 / 2), int(y2 - y1 / 2)
+        return x1 + int((x2 - x1) / 2), y1 + int((y2 - y1) / 2)

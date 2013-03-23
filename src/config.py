@@ -60,4 +60,4 @@ class Config(object):
         self.threedfloor_special = data.get('threedfloor_special')
         self.generalized_specials = data.get('generalized_specials')
         self.teleport_thing_type = data.get('teleport_thing_type') 
-        self.set_identification_special = data.get('set_identification_special')
+        self.line_identification_specials = data.get('line_identification_specials')

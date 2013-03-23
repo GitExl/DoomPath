@@ -157,7 +157,7 @@
 			"768": "damage20"
 		},
 		
-		"set_identification_special": 121,
+		"line_identification_specials": [121, 215],
 		"threedfloor_special": 160,
 		"slope_special": 181,
 		"slope_steep": 0.707122802734375,

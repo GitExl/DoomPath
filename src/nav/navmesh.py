@@ -1,7 +1,7 @@
 from doom.mapenum import LINEDEF_VERTEX_1, LINEDEF_VERTEX_2, VERTEX_X, VERTEX_Y, LINEDEF_HEXEN_ARG0, LINEDEF_HEXEN_ARG1, \
     LINEDEF_DOOM_TAG
 from doom.plane import Plane
-from doom.trig import box_intersects_line
+from doom.trig import box_intersects_line, box_on_line_side
 from nav import navconnection, navarea
 from nav.navarea import NavArea
 from nav.navconnection import NavConnection
@@ -79,6 +79,8 @@ class NavMesh(object):
     def get_area(self, x, y):
         bx, by = self.map_data.blockmap.map_to_blockmap(x, y)
         block = self.map_data.blockmap.get(bx, by)
+        if block is None:
+            return None
         
         for index in block.areas:
             area = self.areas[index]
@@ -101,7 +103,7 @@ class NavMesh(object):
         areas = []
         for index in area_indices:
             area = self.areas[index]
-            if box_intersects_line(area.x1, area.y1, area.x2, area.y2, x1, y1, x2, y2) == True:
+            if box_on_line_side(area.x1, area.y1, area.x2, area.y2, x1, y1, x2, y2) == -1:
                 areas.append(area)
         
         return areas
@@ -118,6 +120,10 @@ class NavMesh(object):
             # Line to thing teleporters.
             if linedef[self.map_data.LINEDEF_ACTION] in self.config.thing_teleport_specials:
                 target_thing = self.map_data.get_destination_from_teleport(index)
+                if target_thing is None:
+                    print 'Teleporter linedef {} has no valid destination thing.'.format(index)
+                    continue
+                
                 x = target_thing[self.map_data.THING_X]
                 y = target_thing[self.map_data.THING_Y]
                 target_area = self.get_area(x, y)
@@ -126,6 +132,10 @@ class NavMesh(object):
             # Only the destination line's center area is used as the destination.
             elif linedef[self.map_data.LINEDEF_ACTION] in self.config.line_teleport_specials:
                 target_line = self.map_data.get_line_destination(index)
+                if target_line is None:
+                    print 'Teleporter linedef {} has no valid destination linedef.'.format(index)
+                    continue
+                
                 x, y = self.map_data.get_line_center(target_line)
                 target_area = self.get_area(x, y)
             

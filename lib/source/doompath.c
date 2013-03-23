@@ -101,18 +101,6 @@ void mapdata_free(mapdata_t* mapdata) {
     free(mapdata);
 }
 
-void mapdata_put_vertices(mapdata_t* mapdata, uint32_t num_vertices, void* vertex_data) {
-    uint32_t i = 0;
-
-    mapdata->num_vertices = num_vertices;
-    
-    mapdata->vertices = calloc(1, sizeof(vertex_t) * num_vertices);
-    for (i = 0; i < num_vertices; i++) {
-        memcpy(mapdata->vertices + i, vertex_data + i * VERTEX_SIZE, VERTEX_SIZE);
-
-    }
-}
-
 void mapdata_put_nodes(mapdata_t* mapdata, uint32_t num_nodes, void* node_data) {
     uint32_t i = 0;
 
@@ -163,7 +151,7 @@ uint16_t point_in_subsector(mapdata_t* mapdata, const int16_t x, const int16_t y
 }
 
 
-int8_t box_intersects_line(const int32_t x1, const int32_t y1, const int32_t x2, const int32_t y2, const int32_t left, const int32_t top, const int32_t right, const int32_t bottom) {
+int8_t box_intersects_line(const int32_t left, const int32_t top, const int32_t right, const int32_t bottom, const int32_t x1, const int32_t y1, const int32_t x2, const int32_t y2) {
 
     if (x1 < left && x2 >= left) {
         int32_t iy = y1 + (y2 - y1) * (left - x1) / (x2 - x1);

@@ -22,7 +22,7 @@ box_on_line_side = doompathlib.box_on_line_side
 box_on_line_side.argtypes = [c_short, c_short, c_short, c_short, c_short, c_short, c_short, c_short]
 box_on_line_side.restype = c_byte
 
-
+"""
 def box_intersects_line(left, top, right, bottom, x1, y1, x2, y2):
     if x1 > left and x1 <= right and y1 > top and y1 <= bottom:
         return True
@@ -48,7 +48,7 @@ def box_intersects_line(left, top, right, bottom, x1, y1, x2, y2):
             return True
     
     return False
-
+"""
 
 def box_intersects_box(left1, top1, right1, bottom1, left2, top2, right2, bottom2):
     return not (left2 > right1 or right2 < left1 or top2 > bottom1 or bottom2 < top1)
