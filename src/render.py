@@ -42,7 +42,7 @@ def render_connections(nav_mesh, surface, camera, x, y):
                 
                 if active == True:
                     sx, sy = camera.map_to_screen(connection.x1 + (connection.x2 - connection.x1) / 2, connection.y1 + (connection.y2 - connection.y1) / 2)
-                    dx, dy = camera.map_to_screen(connection.area_b.x1 + (connection.area_b.x2 - connection.area_b.x1) / 2, connection.area_b.y1 + (connection.area_b.y2 - connection.area_b.y1) / 2)
+                    dx, dy = camera.map_to_screen(connection.area_b.rect.left + connection.area_b.rect.get_width() / 2, connection.area_b.rect.top + connection.area_b.rect.get_height() / 2)
                     pygame.draw.line(surface, COLOR_ACTIVE, (sx, sy), (dx, dy), 1)
                 
             else:
@@ -170,14 +170,14 @@ def render_navmesh(nav_mesh, surface, camera, mouse_x, mouse_y):
     areas = []
 
     for area in nav_mesh.areas:
-        if mouse_x >= area.x1 and mouse_y >= area.y1 and mouse_x < area.x2 and mouse_y < area.y2:
+        if area.rect.is_point_inside(mouse_x, mouse_y) == True:
             color = COLOR_HIGHLIGHT
             areas.append(area)
         else:
             color = COLOR_FILL
         
-        x, y = camera.map_to_screen(area.x1, area.y1)
-        width, height = ((area.x2 - area.x1) * camera.zoom, (area.y2 - area.y1) * camera.zoom)
+        x, y = camera.map_to_screen(area.rect.left, area.rect.top)
+        width, height = area.rect.get_width() * camera.zoom, area.rect.get_height() * camera.zoom
         
         x += 1
         y += 1

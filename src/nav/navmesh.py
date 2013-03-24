@@ -1,9 +1,8 @@
 from doom.mapdata import Teleporter
-from doom.mapenum import LINEDEF_VERTEX_1, LINEDEF_VERTEX_2, VERTEX_X, VERTEX_Y, LINEDEF_HEXEN_ARG0, LINEDEF_HEXEN_ARG1, \
-    LINEDEF_DOOM_TAG
+from doom.mapenum import LINEDEF_VERTEX_1, LINEDEF_VERTEX_2, VERTEX_X, VERTEX_Y
 from doom.plane import Plane
-from doom.trig import box_intersects_line, box_on_line_side
-from nav import navconnection, navarea
+from doom.trig import box_intersects_line
+from nav import navconnection
 from nav.navarea import NavArea
 from nav.navconnection import NavConnection
 from nav.navenum import *
@@ -19,7 +18,7 @@ MESH_FILE_AREA_CONNECTION = struct.Struct('<i')
 MESH_FILE_PLANES_HEADER = struct.Struct('<I')
 MESH_FILE_PLANE = struct.Struct('<ifffff')
 MESH_FILE_CONNECTIONS_HEADER = struct.Struct('<I')
-MESH_FILE_CONNECTION = struct.Struct('<ihhhhiiI')
+MESH_FILE_CONNECTION = struct.Struct('<ihhhhiiiI')
 
 
 class NavMesh(object):
@@ -85,7 +84,7 @@ class NavMesh(object):
         
         for index in block.areas:
             area = self.areas[index]
-            if x >= area.x1 and x <= area.x2 and y >= area.y1 and y <= area.y2:
+            if area.rect.is_point_inside(x, y) == True:
                 return area
         
         return None
@@ -95,18 +94,18 @@ class NavMesh(object):
         bx1, by1 = self.map_data.blockmap.map_to_blockmap(x1, y1)
         bx2, by2 = self.map_data.blockmap.map_to_blockmap(x2, y2)
         
-        area_indices = []
+        area_indices = set()
         for y in range(by1, by2 + 1):
             for x in range(bx1, bx2 + 1):
                 block = self.map_data.blockmap.get(x, y)
-                area_indices.extend(block.areas)
+                area_indices.update(block.areas)
         
         areas = []
         for index in area_indices:
             area = self.areas[index]
-            if box_on_line_side(area.x1, area.y1, area.x2, area.y2, x1, y1, x2, y2) == -1:
+            if box_intersects_line(area.rect, x1, y1, x2, y2) == True:
                 areas.append(area)
-        
+
         return areas
 
 
@@ -115,6 +114,7 @@ class NavMesh(object):
         Creates area connections for teleporter line types.
         """
         
+        count = 0
         for teleporter in self.map_data.teleporters:
             target_area = None
             
@@ -143,7 +143,8 @@ class NavMesh(object):
             if y1 > y2:
                 y1, y2 = y2, y1
 
-            # Place a teleporter connection in all source areas.
+            # Place a teleporter connection in all intersecting source areas.
+            count += 1
             areas = self.get_areas_intersecting(x1, y1, x2, y2)
             for area in areas:
                 connection = NavConnection()
@@ -157,6 +158,8 @@ class NavMesh(object):
                 connection.flags = navconnection.CONNECTION_FLAG_AB | navconnection.CONNECTION_FLAG_TELEPORTER
                 
                 area.connections.append(connection)
+        
+        print 'Connected {} teleporters.'.format(count)
                 
 
     def prune_elements(self):
@@ -165,8 +168,8 @@ class NavMesh(object):
         """
         
         for area in self.areas:
-            x1, y1 = self.nav_grid.map_to_element(area.x1, area.y1)
-            x2, y2 = self.nav_grid.map_to_element(area.x2, area.y2)
+            x1, y1 = self.nav_grid.map_to_element(area.rect.left, area.rect.top)
+            x2, y2 = self.nav_grid.map_to_element(area.rect.right, area.rect.bottom)
             
             # Shrink the area size by one element on each side.
             # Skip pruning elements in the area if the area is too small.
@@ -179,10 +182,10 @@ class NavMesh(object):
             if y1 > y2:
                 continue
             
-            area.inside_x1 = x1
-            area.inside_y1 = y1
-            area.inside_x2 = x2
-            area.inside_y2 = y2
+            area.inside_rect.left = x1
+            area.inside_rect.top = y1
+            area.inside_rect.right = x2
+            area.inside_rect.bottom = y2
             area.elements = filter(self.area_element_prune_filter, area.elements)
             
         self.nav_grid.remove_pruned_elements()
@@ -264,7 +267,8 @@ class NavMesh(object):
     
     
     def area_element_prune_filter(self, element):
-        if element.x >= element.area.inside_x1 and element.y >= element.area.inside_y1 and element.x < element.area.inside_x2 and element.y < element.area.inside_y2:
+        if element.x >= element.area.inside_rect.left and element.y >= element.area.inside_rect.top \
+         and element.x < element.area.inside_rect.right and element.y < element.area.inside_rect.bottom:
             self.nav_grid.element_prune.add(element)
             return False
         
@@ -354,17 +358,17 @@ class NavMesh(object):
             
             # Get the size of the new merged area.
             if side == SIDE_TOP:
-                width = area.x2 - area.x1
-                height = area.y2 - merge_area.y1 
+                width = area.rect.get_width()
+                height = area.rect.bottom - merge_area.rect.top 
             elif side == SIDE_RIGHT:
-                width = merge_area.x2 - area.x1
-                height = area.y2 - area.y1
+                width = merge_area.rect.right - area.rect.left
+                height = area.rect.get_height()
             elif side == SIDE_BOTTOM:
-                width = area.x2 - area.x1
-                height = merge_area.y2 - area.y1
+                width = area.rect.get_width()
+                height = merge_area.rect.bottom - area.rect.top
             elif side == SIDE_LEFT:
-                width = area.x2 - merge_area.x1
-                height = area.y2 - area.y1
+                width = area.rect.right - merge_area.rect.left
+                height = area.rect.get_height()
                 
             # Abort merging if the area dimensions are not good.
             if width > self.max_area_size_merged or height > self.max_area_size_merged:
@@ -372,13 +376,13 @@ class NavMesh(object):
             
             # Merge the area surface.
             if side == SIDE_TOP:
-                merge_area.y2 = area.y2
+                merge_area.rect.bottom = area.rect.bottom
             elif side == SIDE_RIGHT:
-                merge_area.x1 = area.x1
+                merge_area.rect.left = area.rect.left
             elif side == SIDE_BOTTOM:
-                merge_area.y1 = area.y1
+                merge_area.rect.top = area.rect.top
             elif side == SIDE_LEFT:
-                merge_area.x2 = area.x2
+                merge_area.rect.right = area.rect.right
                 
             # Merge the area element lists.
             merge_area.elements.extend(area.elements)
@@ -493,8 +497,12 @@ class NavMesh(object):
                     area_b_hash = hash(connection.area_b)
                 else:
                     area_a_hash = 0
+                if connection.linedef is not None:
+                    linedef = connection.linedef
+                else:
+                    linedef = -1
                     
-                connection_data = MESH_FILE_CONNECTION.pack(connection_hash, connection.x1, connection.y1, connection.x2, connection.y2, area_a_hash, area_b_hash, connection.flags)
+                connection_data = MESH_FILE_CONNECTION.pack(connection_hash, connection.x1, connection.y1, connection.x2, connection.y2, area_a_hash, area_b_hash, linedef, connection.flags)
                 f.write(connection_data)
             
             # Write area data.
@@ -511,7 +519,7 @@ class NavMesh(object):
                 else:
                     plane_hash = 0
                     
-                area_data = MESH_FILE_AREA.pack(area_hashes[index], area.x1, area.y1, area.x2, area.y2, area.z, plane_hash, sector_index, area.flags, len(area.connections))
+                area_data = MESH_FILE_AREA.pack(area_hashes[index], area.rect.left, area.rect.top, area.rect.right, area.rect.bottom, area.z, plane_hash, sector_index, area.flags, len(area.connections))
                 f.write(area_data)
                 
                 for connection in area.connections:
@@ -545,13 +553,18 @@ class NavMesh(object):
             connections_count = MESH_FILE_CONNECTIONS_HEADER.unpack(f.read(MESH_FILE_CONNECTIONS_HEADER.size))[0]
             for _ in range(connections_count):
                 connection = NavConnection()
-                connection_hash, x1, y1, x2, y2, area_a_hash, area_b_hash, flags = MESH_FILE_CONNECTION.unpack(f.read(MESH_FILE_CONNECTION.size))
+                connection_hash, x1, y1, x2, y2, area_a_hash, area_b_hash, linedef, flags = MESH_FILE_CONNECTION.unpack(f.read(MESH_FILE_CONNECTION.size))
+                
+                if linedef == -1:
+                    linedef = None
+                
                 connection.x1 = x1
                 connection.y1 = y1
                 connection.x2 = x2
                 connection.y2 = y2
                 connection.area_a = area_a_hash
                 connection.area_b = area_b_hash
+                connection.linedef = linedef
                 connection.flags = flags
                 connection_hashes[connection_hash] = connection
             

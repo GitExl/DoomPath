@@ -59,6 +59,7 @@ int16	X2
 int16	Y2
 int32	Area A object hash value.
 int32	Area B object hash value.
+int32	Linedef index, for teleporters.
 uint32	Flags.
 
 Connection flags

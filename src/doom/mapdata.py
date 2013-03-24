@@ -225,7 +225,6 @@ class MapData(object):
                 continue
 
             teleporter = Teleporter()
-
             teleporter.kind = kind        
             teleporter.source_line = line_index
             if kind == Teleporter.TELEPORTER_THING:

@@ -1,5 +1,5 @@
 from doom.mapenum import *
-from doom.trig import box_intersects_line, box_intersects_box, point_in_subsector
+from doom.trig import point_in_subsector, box_intersects_line, Rectangle
 import config
 
 
@@ -25,11 +25,8 @@ class PositionState(object):
         self.base_sector_index = 0
         self.floor_plane = None
         
-        self.box_top = 0
-        self.box_left = 0
-        self.box_bottom = 0
-        self.box_right = 0
-
+        self.bbox = Rectangle()
+        
 
     def reset(self, x, y, z, radius, height):
         self.x = x
@@ -48,11 +45,11 @@ class PositionState(object):
         self.special_sector = None
         self.floor_plane = None
 
-        self.box_top = y + radius
-        self.box_bottom = y - radius
-        self.box_right = x + radius
-        self.box_left = x - radius
-
+        self.bbox.left = x - radius
+        self.bbox.top = y - radius
+        self.bbox.right = x + radius
+        self.bbox.bottom = y + radius
+        
 
 class Walker(object):
     
@@ -102,8 +99,8 @@ class Walker(object):
             
         self.check_sector_position(state)
         
-        x1, y1 = self.map_data.blockmap.map_to_blockmap(state.box_left, state.box_bottom)
-        x2, y2 = self.map_data.blockmap.map_to_blockmap(state.box_right, state.box_top)
+        x1, y1 = self.map_data.blockmap.map_to_blockmap(state.bbox.left, state.bbox.top)
+        x2, y2 = self.map_data.blockmap.map_to_blockmap(state.bbox.right, state.bbox.bottom)
         
         linedefs, things = self.map_data.blockmap.get_region(x1, y1, x2, y2)
         if len(linedefs) > 0:
@@ -142,7 +139,7 @@ class Walker(object):
             ly2 = vertex2[VERTEX_Y] 
             
             # Ignore lines that do not intersect.                   
-            if box_intersects_line(state.box_left, state.box_top, state.box_right, state.box_bottom, lx1, ly1, lx2, ly2) == False:
+            if box_intersects_line(state.bbox, lx1, ly1, lx2, ly2) == False:
                 continue
             
             # Cannot pass through impassible flagged lines.
@@ -194,12 +191,12 @@ class Walker(object):
             thing_x = thing[self.map_data.THING_X]
             thing_y = thing[self.map_data.THING_Y]
 
-            left = thing_x - thing_radius
-            top = thing_y - thing_radius
-            right = thing_x + thing_radius
-            bottom = thing_y + thing_radius
-
-            if box_intersects_box(state.box_left, state.box_bottom, state.box_right, state.box_top, left, top, right, bottom) == False:
+            rect = Rectangle()
+            rect.left = thing_x - thing_radius
+            rect.top = thing_y - thing_radius
+            rect.right = thing_x + thing_radius
+            rect.bottom = thing_y + thing_radius
+            if state.bbox.intersects(rect) == False:
                 continue
             
             # Determine z position.

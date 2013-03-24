@@ -302,8 +302,8 @@ class BlockMap(object):
         
         for index, area in enumerate(nav_mesh.areas):
             # Convert map bounding box to blockmap bounding box.
-            left, top = self.map_to_blockmap(area.x1, area.y1)
-            right, bottom = self.map_to_blockmap(area.x2, area.y2)
+            left, top = self.map_to_blockmap(area.rect.left, area.rect.top)
+            right, bottom = self.map_to_blockmap(area.rect.right, area.rect.bottom)
             
             # Clip bounding box to blockmap dimensions.
             left = max(0, left)
