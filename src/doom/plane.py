@@ -2,7 +2,7 @@
 #coding=utf8
 
 from doom.mapenum import *
-from vector import Vector3, vector_substract, vector_crossproduct, vector_dotproduct
+from util.vector import Vector3, vector_substract, vector_crossproduct, vector_dotproduct
 
 
 class Plane(object):

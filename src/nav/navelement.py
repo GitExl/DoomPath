@@ -1,10 +1,10 @@
 from nav.navenum import *
+from util.vector import Vector3
 
 
 class NavElement(object):
     __slots__ = (
-        'x', 'y', 'z',
-        
+        'pos',
         'plane',
         'special_sector',
         'flags',
@@ -18,9 +18,7 @@ class NavElement(object):
 
     
     def __init__(self, x, y, z):
-        self.x = x
-        self.y = y
-        self.z = z
+        self.pos = Vector3(x, y, z)
         
         self.plane = None
         self.special_sector = None
@@ -34,11 +32,11 @@ class NavElement(object):
         
         
     def __repr__(self):
-        return 'element {}, {}, {}, flags {}, sector {}, plane {}'.format(self.x, self.y, round(self.z, 2), self.flags, self.special_sector, self.plane)
+        return 'element {}, flags {}, sector {}, plane {}'.format(self.pos, self.flags, self.special_sector, self.plane)
    
     
     def is_similar(self, other):       
         if self.plane is not None or other.plane is not None:
             return self.special_sector == other.special_sector and self.flags == other.flags and self.plane == other.plane
         else:
-            return self.special_sector == other.special_sector and self.flags == other.flags and self.z == other.z
+            return self.special_sector == other.special_sector and self.flags == other.flags and self.pos.z == other.pos.z

@@ -3,6 +3,7 @@ from doom.mapenum import *
 from nav.navelement import NavElement
 from nav.navenum import *
 from nav.walker import Walker
+from util.vector import Vector3, Vector2
 import struct
 
 
@@ -43,8 +44,8 @@ class NavGrid(object):
         self.element_size = config.player_radius / resolution
         self.element_height = config.player_height
         
-        self.width = self.map_data.width / self.element_size
-        self.height = self.map_data.height / self.element_size
+        self.width = self.map_data.size.x/ self.element_size
+        self.height = self.map_data.size.y / self.element_size
         
         self.walker = Walker(map_data, config)
         
@@ -54,11 +55,12 @@ class NavGrid(object):
         self.element_prune = set()
         
         
-    def add_walkable_element(self, x, y, z):
-        ex, ey = self.map_to_element(x, y)
-        element = self.add_element(ex, ey, z)
+    def add_walkable_element(self, pos):
+        element_pos = self.map_to_element(pos)
+        element_pos = Vector3(element_pos.x, element_pos.y, pos.z)
+        element = self.add_element(element_pos)
         
-        sector_index = self.map_data.get_sector(x, y)
+        sector_index = self.map_data.get_sector(element_pos.x, element_pos.y)
         self.set_element_extra(sector_index, element)
         
         sector_extra = self.map_data.sector_extra[sector_index]
@@ -68,15 +70,15 @@ class NavGrid(object):
         self.element_tasks.append(element)
         
     
-    def add_element(self, x, y, z):
-        element = NavElement(x, y, z)
+    def add_element(self, pos):
+        element = NavElement(pos.x, pos.y, pos.z)
 
-        element_hash = x + (y * self.width)
+        element_hash = pos.x + (pos.y * self.width)
         elements = self.element_hash.get(element_hash)
         if elements is None:
             elements = {}
             self.element_hash[element_hash] = elements
-        elements[z] = element
+        elements[pos.z] = element
         
         self.elements.append(element)
         
@@ -91,33 +93,36 @@ class NavGrid(object):
         
         # Add the initial things as initial elements to the nav grid.
         for thing in start_things:
-            x = thing[self.map_data.THING_X]
-            y = thing[self.map_data.THING_Y]
-            z = self.map_data.get_floor_z(x, y)
+            pos = Vector3()
+            pos.x = thing[self.map_data.THING_X] 
+            pos.y = thing[self.map_data.THING_Y]
+            pos.z = self.map_data.get_floor_z(pos.x, pos.y)
             
-            collision, _ = self.walker.check_position(x, y, z, self.config.player_radius, self.config.player_height)
+            collision, _ = self.walker.check_position(pos, self.config.player_radius, self.config.player_height)
             if collision == True:
-                print 'Thing at {}, {} has no room to spawn, ignoring.'.format(x, y)
+                print 'Thing at {} has no room to spawn, ignoring.'.format(pos)
                 continue
             
-            self.add_walkable_element(x, y, z)
+            self.add_walkable_element(pos)
         
         # Add teleporter destinations as starting elements.
         for teleporter in self.map_data.teleporters:
-            if teleporter.kind == Teleporter.TELEPORTER_THING:
-                x = teleporter.dest_x
-                y = teleporter.dest_y
-            else:
-                x, y = self.map_data.get_line_center(teleporter.dest_line)
-                
-            z = self.map_data.get_floor_z(x, y)  
             
-            collision, _ = self.walker.check_position(x, y, z, self.config.player_radius, self.config.player_height)
+            if teleporter.kind == Teleporter.TELEPORTER_THING:
+                dest = Vector3()
+                dest.x = teleporter.dest.x
+                dest.y = teleporter.dest.y
+            else:
+                dest = self.map_data.get_line_center(teleporter.dest_line)
+                
+            dest.z = self.map_data.get_floor_z(dest.x, dest.y)
+            
+            collision, _ = self.walker.check_position(dest, self.config.player_radius, self.config.player_height)
             if collision == True:
-                print 'Teleporter destination at {}, {} has no room to spawn, ignoring.'.format(x, y)
+                print 'Teleporter destination at {} has no room to spawn, ignoring.'.format(dest)
                 continue
             
-            self.add_walkable_element(x, y, z)
+            self.add_walkable_element(dest)
         
         print 'Added {} starting elements.'.format(len(start_things))
     
@@ -128,12 +133,12 @@ class NavGrid(object):
         
         # Remove pruned elements from the element hash table.
         for element in self.element_prune:
-            element_hash = element.x + (element.y * self.width)
+            element_hash = element.pos.x + (element.pos.y * self.width)
             elements = self.element_hash.get(element_hash)
             if elements is None:
                 return
                 
-            del elements[element.z]
+            del elements[element.pos.z]
             if len(elements) == 0:
                 del self.element_hash[element_hash]
                 
@@ -172,7 +177,7 @@ class NavGrid(object):
                     else:
                         special_sector = element.special_sector
                         
-                element_data = GRID_FILE_ELEMENT.pack(element.x, element.y, element.z, plane_hash, special_sector, element.flags, indices[0], indices[1], indices[2], indices[3])
+                element_data = GRID_FILE_ELEMENT.pack(element.pos.x, element.pos.y, element.pos.z, plane_hash, special_sector, element.flags, indices[0], indices[1], indices[2], indices[3])
                 f.write(element_data)
            
                 
@@ -190,7 +195,7 @@ class NavGrid(object):
             self.elements = []
             for _ in range(element_count):
                 element = NavElement(0, 0, 0)
-                element.x, element.y, element.z, plane_hash, element.special_sector, element.flags, element.elements[0], element.elements[1], element.elements[2], element.elements[3] = GRID_FILE_ELEMENT.unpack(f.read(GRID_FILE_ELEMENT.size))
+                element.pos.x, element.pos.y, element.pos.z, plane_hash, element.special_sector, element.flags, element.elements[0], element.elements[1], element.elements[2], element.elements[3] = GRID_FILE_ELEMENT.unpack(f.read(GRID_FILE_ELEMENT.size))
                 
                 for sector_extra in self.map_data.sector_extra:
                     if hash(sector_extra.floor_plane) == plane_hash:
@@ -220,29 +225,31 @@ class NavGrid(object):
             elements[element.z] = element 
             
     
-    def get_element(self, x, y, z):
-        element_hash = x + (y * self.width)
+    def get_element(self, pos):
+        element_hash = pos.x + (pos.y * self.width)
         elements = self.element_hash.get(element_hash)
         if elements is not None:
-            return elements.get(z)
+            return elements.get(pos.z)
 
         return None
     
     
-    def get_element_list(self, x, y):
-        element_hash = x + (y * self.width)
+    def get_element_list(self, pos):
+        element_hash = pos.x + (pos.y * self.width)
         return self.element_hash.get(element_hash)
         
 
-    def map_to_element(self, x, y):
-        return (x / self.element_size) + 1, (y / self.element_size) + 1
+    def map_to_element(self, pos):
+        return Vector2((pos.x / self.element_size) + 1, (pos.y / self.element_size) + 1)
     
     
-    def element_to_map(self, x, y):
-        return (x * self.element_size) - (self.element_size / 2), (y * self.element_size) - (self.element_size / 2)
+    def element_to_map(self, pos):
+        return Vector2((pos.x * self.element_size) - (self.element_size / 2), (pos.y * self.element_size) - (self.element_size / 2))
 
     
     def create_walkable_elements(self, config):       
+        pos = Vector3()
+        
         while 1:
             if len(self.element_tasks) == 0:
                 break
@@ -252,60 +259,59 @@ class NavGrid(object):
                 print '{} elements, {} tasks left...'.format(len(self.elements), len(self.element_tasks))
             
             for direction in DIRECTION_RANGE:
+                pos.copy_from(element.pos)
                 if direction == DIRECTION_UP:
-                    x = element.x
-                    y = element.y - 1
+                    pos.y -= 1
                 elif direction == DIRECTION_RIGHT:
-                    x = element.x + 1
-                    y = element.y
+                    pos.x += 1
                 elif direction == DIRECTION_DOWN:
-                    x = element.x
-                    y = element.y + 1
+                    pos.y += 1
                 elif direction == DIRECTION_LEFT:
-                    x = element.x - 1
-                    y = element.y
-                z = element.z
+                    pos.x -= 1
                 
                 # See if an adjoining element already exists.
-                new_element = self.get_element(x, y, z)
+                new_element = self.get_element(pos)
                 if new_element is None:
-                    reason, new_element = self.test_element(x, y, z, direction, element, new_element)
+                    reason, new_element = self.test_element(pos, direction, element, new_element)
                     if reason != REASON_NONE:
                         continue
                     
                 element.elements[direction] = new_element
 
                 
-    def test_element(self, x, y, z, direction, element, new_element):
-        jump = False
-
+    def test_element(self, pos, direction, element, new_element):
         # See if an adjoining element can be placed.
-        map_x, map_y = self.element_to_map(x, y)
-        if map_x < self.map_data.min_x or map_x > self.map_data.max_x or map_y < self.map_data.min_y or map_y > self.map_data.max_y:
-            print 'Grid leak at {}, {}'.format(map_x, map_y)
+        map_pos = self.element_to_map(pos)
+        if map_pos.x < self.map_data.min_x or map_pos.x > self.map_data.max_x or map_pos.y < self.map_data.min_y or map_pos.y > self.map_data.max_y:
+            print 'Grid leak at {}'.format(map_pos)
             return REASON_LEAK, None
         
-        collision, state = self.walker.check_position(map_x, map_y, z, self.element_size, self.element_height)
+        check_pos = Vector3()
+        check_pos.x = map_pos.x
+        check_pos.y = map_pos.y
+        check_pos.z = pos.z
+        collision, state = self.walker.check_position(check_pos, self.element_size, self.element_height)
         
         if state.special_sector is not None:
             sector_extra = self.map_data.sector_extra[state.special_sector]
             if sector_extra.ignore == True:
                 return REASON_IGNORE, None
         
+        jump = False
         if collision == True:
             # Blocked by impassible line.
             if state.blockline == True:
                 return REASON_BLOCK_LINE, None
 
-            elif state.floorz > z:
+            elif state.floorz > check_pos.z:
                 
                 # If the player can step up to a higher floor, do so.
-                if state.floorz - z <= self.config.step_height:
-                    z = state.floorz
+                if state.floorz - check_pos.z <= self.config.step_height:
+                    check_pos.z = state.floorz
                 
                 # If the player can jump up to a higher floor, do so.
-                elif self.config.jump_height > 0 and state.floorz - z <= self.config.jump_height:
-                    z = state.floorz
+                elif self.config.jump_height > 0 and state.floorz - check_pos.z <= self.config.jump_height:
+                    check_pos.z = state.floorz
                     jump = True
                     
                 # If the sector moves during the game, ignore any higher height difference.
@@ -313,12 +319,12 @@ class NavGrid(object):
                     return REASON_TOO_HIGH, None
                 
         # Steep slopes cannot be walked up, only down.
-        if state.steep == True and state.floorz > element.z:
+        if state.steep == True and state.floorz > element.pos.z:
             return REASON_SLOPE_TOO_STEEP, None
         
         # Snap to moving sector floor.
         if state.moves == True:
-            z = state.floorz
+            check_pos.z = state.floorz
         
         # Set origin element jumping flags.
         if jump == True:
@@ -332,16 +338,19 @@ class NavGrid(object):
                 element.flags |= FLAG_JUMP_WEST
         
         # Drop to the lowest floor.
-        z = min(z, state.floorz)
+        check_pos.z = min(check_pos.z, state.floorz)
         
         # Player cannot fit in the sector.
-        if (z < state.floorz or z + self.element_height > state.ceilz) and (state.moves == False or state.blockthing == True): 
+        if (check_pos.z < state.floorz or check_pos.z + self.element_height > state.ceilz) and (state.moves == False or state.blockthing == True): 
             return REASON_CANNOT_FIT, None
                               
         # See if an element exists in the updated location.
-        new_element = self.get_element(x, y, z)
+        new_pos = self.map_to_element(check_pos)
+        new_pos.z = check_pos.z
+        new_element = self.get_element(new_pos)
+        
         if new_element is None:
-            new_element = self.add_element(x, y, z)
+            new_element = self.add_element(new_pos)
             if state.special_sector is not None:
                 self.set_element_extra(state.special_sector, new_element)
                 

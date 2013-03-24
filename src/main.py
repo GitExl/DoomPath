@@ -1,6 +1,7 @@
 from doom import wad, mapdata
 from nav import navgrid
 from nav.navmesh import NavMesh
+from util.vector import Vector2, Vector3
 import cProfile
 import camera
 import config
@@ -24,11 +25,8 @@ class Mouse(object):
     def __init__(self):
         self.buttons = [False] * 6
         
-        self.x = 0
-        self.y = 0
-        
-        self.map_x = 0
-        self.map_y = 0
+        self.pos = Vector2()
+        self.map_pos = Vector2()
 
 
 class Loop(object):
@@ -49,9 +47,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/test.wad'
-        source_map = 'MAP01'
-        dest_mesh = 'test/test_map01.dpm'
+        source_wad = 'test/doom.wad'
+        source_map = 'E1M1'
+        dest_mesh = 'test/doom_e1m1.dpm'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -120,12 +118,12 @@ class Loop(object):
                 self.mouse.buttons[event.button] = False
                 
             elif event.type == pygame.MOUSEMOTION:
-                self.mouse.x = event.pos[0]
-                self.mouse.y = event.pos[1]
+                self.mouse.pos.x = event.pos[0]
+                self.mouse.pos.y = event.pos[1]
                 
-                self.mouse.map_x, self.mouse.map_y = self.camera.screen_to_map(event.pos[0], event.pos[1])
-                self.mouse.map_x = int(self.mouse.map_x)
-                self.mouse.map_y = int(self.mouse.map_y)
+                self.mouse.map_pos.x, self.mouse.map_pos.y = self.camera.screen_to_map(event.pos[0], event.pos[1])
+                self.mouse.map_pos.x = int(self.mouse.map_pos.x)
+                self.mouse.map_pos.y = int(self.mouse.map_pos.y)
                 update_display = True
                 
                 if self.mouse.buttons[3] == True:
@@ -158,37 +156,39 @@ class Loop(object):
         connections = None
         elements = None
         
-        #sector = self.map_data.get_sector(self.mouse.map_x, self.mouse.map_y)
+        #sector = self.map_data.get_sector(self.mouse.map_pos.x, self.mouse.map_pos.y)
         
         self.screen.fill(COLOR_BACKGROUND)
         
-        #render.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        #elements = render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        render.render_linedefs(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y, sector)
-        render.render_things(self.map_data, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        areas = render.render_navmesh(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_x, self.mouse.map_y)
-        #state = self.render_collision_box()
+        #render.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_pos)
+        #elements = render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_pos)
+        render.render_linedefs(self.map_data, self.screen, self.camera, sector)
+        render.render_things(self.map_data, self.screen, self.camera)
+        areas = render.render_navmesh(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
+        connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
+        state = self.render_collision_box()
         self.render_debug_text(connections, state, elements, areas)
         
         pygame.display.flip()
     
     
     def render_collision_box(self):
-        x = self.mouse.map_x
-        y = self.mouse.map_y
-        z = self.map_data.get_floor_z(self.mouse.map_x, self.mouse.map_y)
+        x = self.mouse.map_pos.x
+        y = self.mouse.map_pos.y
+        z = self.map_data.get_floor_z(self.mouse.map_pos.x, self.mouse.map_pos.y)
+        pos = Vector3(x, y, z)
+        
         radius = self.config.player_radius
         height = self.config.player_height
-        collision, state = self.nav_grid.walker.check_position(x, y, z, radius, height)
+        collision, state = self.nav_grid.walker.check_position(pos, radius, height)
         
         if collision == False:
             color = COLOR_COLLISION_BOX
         else:
             color = COLOR_COLLISION_BOX_COLLIDE
 
-        x = self.mouse.map_x - self.config.player_radius
-        y = self.mouse.map_y - self.config.player_radius
+        x = self.mouse.map_pos.x - self.config.player_radius
+        y = self.mouse.map_pos.y - self.config.player_radius
         x, y = self.camera.map_to_screen(x, y)
         size = (self.config.player_radius * 2) * self.camera.zoom
         
@@ -199,7 +199,7 @@ class Loop(object):
         
 
     def render_debug_text(self, connections, state, elements, areas):
-        text = '{}, {}'.format(self.mouse.map_x, self.mouse.map_y)
+        text = '{}, {}'.format(self.mouse.map_pos.x, self.mouse.map_pos.y)
         self.render_text(text, 4, 4)
         
         x = 4
@@ -233,12 +233,12 @@ class Loop(object):
         
         
     def center_map(self):
-        map_size = max(self.map_data.width, self.map_data.height)
+        map_size = max(self.map_data.size.x, self.map_data.size.y)
         display_size = min(1280, 720)
         zoom = float(display_size) / float(map_size) - 0.005
 
-        x = self.map_data.min_x + self.map_data.width / 2
-        y = self.map_data.min_y + self.map_data.height / 2
+        x = self.map_data.min_x + self.map_data.size.x / 2
+        y = self.map_data.min_y + self.map_data.size.y / 2
  
         self.camera.set_zoom(zoom)
         self.camera.set_center(x, y)

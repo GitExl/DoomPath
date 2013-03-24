@@ -44,12 +44,17 @@ def vector_dotproduct(vector1, vector2):
     return (vector1.x * vector2.x) + (vector1.y * vector2.y) + (vector1.z * vector2.z);
 
 
+
 class Vector3(object):
     """
     A three dimensional vector.
     """
     
-    def __init__(self, x, y, z):
+    def __init__(self, x=0, y=0, z=0):
+        self.set(x, y, z)
+        
+        
+    def set(self, x, y, z):
         self.x = x
         self.y = y
         self.z = z
@@ -81,3 +86,61 @@ class Vector3(object):
         self.x *= scale
         self.y *= scale
         self.z *= scale
+        
+        
+    def copy_from(self, other):
+        self.x = other.x
+        self.y = other.y
+        self.z = other.z
+        
+        
+    def __repr__(self):
+        return '({}, {}, {})'.format(self.x, self.y, self.z)
+    
+    
+    
+class Vector2(object):
+    
+    def __init__(self, x=0, y=0):
+        self.set(x, y)
+        
+        
+    def set(self, x, y):
+        self.x = x
+        self.y = y
+        
+        
+    def normalize(self):
+        """
+        Normalizes this vector.
+        """
+        
+        length = self.length()
+        if length > 0.0:
+            self.scale(1.0 / length)
+    
+    
+    def length(self):
+        """
+        Returns the length of this vector.
+        """
+        
+        return math.sqrt(self.x * self.x + self.y * self.y);
+    
+    
+    def scale(self, scale):
+        """
+        Scales this vector.
+        """
+        
+        self.x *= scale
+        self.y *= scale
+        
+        
+    def copy_from(self, other):
+        self.x = other.x
+        self.y = other.y
+        
+        
+    def __repr__(self):
+        return '({}, {})'.format(self.x, self.y)

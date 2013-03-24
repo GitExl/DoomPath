@@ -2,6 +2,7 @@
 #coding=utf8
 
 from doom.mapenum import *
+from util.vector import Vector2
 import struct
 
 
@@ -32,12 +33,10 @@ class BlockMap(object):
     
     def __init__(self):
         # Origin point of the top left blockmap block.
-        self.origin_x = 0
-        self.origin_y = 0
+        self.origin = Vector2()
         
         # Size of this blockmap, in blocks.
-        self.width = 0
-        self.height = 0
+        self.size = Vector2()
         
         # Size of a block, in map units.
         self.blocksize = 64
@@ -46,45 +45,41 @@ class BlockMap(object):
         self.blocks = None
     
     
-    def get(self, x, y):
+    def get(self, pos):
         """
         Returns a single Block object from this blockmap.
         
-        @param x: the X coordinate of the block to return.
-        @param y: the Y coordinate of the block to return.
+        @param pos: a Vector2 of the position where to return a block from.
         
-        @return: a BLock object or None if the block falls outside the blockmap coordinate range.
+        @return: a Block object or None if the block falls outside the blockmap coordinate range.
         """
           
-        if x < 0 or x >= self.width:
+        if pos.x < 0 or pos.x >= self.size.x:
             return None
-        if y < 0 or y >= self.height:
+        if pos.y < 0 or pos.y >= self.size.y:
             return None
         
-        return self.blocks[x + y * self.width]
+        return self.blocks[pos.x + pos.y * self.size.x]
     
     
-    def get_region(self, x1, y1, x2, y2):
+    def get_region(self, rect):
         """
         Returns a list of blocks that fall inside a blockmap region.
         
-        @param x1: X coordinate of the region start.
-        @param y1: Y coordinate of the region start.
-        @param x2: X coordinate of the region end.
-        @param y2: Y coordinate of the region end.
+        @param rect: a Rectangle describing the region to return blocks from.
         
-        @return: a list of Block objects from x1, y1 up to and including x2, y2.
+        @return: a list of linedefs and a list of things.
         """
         
         linedefs = []
         things = []
         blocks_len = len(self.blocks)
         
-        cy = y1
-        while cy <= y2:
-            cx = x1
-            while cx <= x2:
-                index = cx + cy * self.width
+        cy = rect.top
+        while cy <= rect.bottom:
+            cx = rect.left
+            while cx <= rect.right:
+                index = cx + cy * self.size.x
                 if index >= 0 and index < blocks_len:
                     block = self.blocks[index]
                     if block is not None:
@@ -98,20 +93,20 @@ class BlockMap(object):
         return linedefs, things
     
     
-    def blockmap_to_map(self, x, y):
+    def blockmap_to_map(self, pos):
         """
         Returns map unit coordinates for the blockmap block at coordinate x, y.
         """
         
-        return x * self.blocksize + self.origin_x, y * self.blocksize + self.origin_y
+        return Vector2(pos.x * self.blocksize + self.origin_x, pos.y * self.blocksize + self.origin_y)
     
     
-    def map_to_blockmap(self, x, y):
+    def map_to_blockmap(self, pos):
         """
         Returns blockmap coordinates for the map units x, y.
         """
         
-        return int((x - self.origin_x) / self.blocksize), int((y - self.origin_y) / self.blocksize)
+        return Vector2(int((pos.x - self.origin.x) / self.blocksize), int((pos.y - self.origin.y) / self.blocksize))
     
 
     def generate_linedefs(self, map_data):
@@ -137,8 +132,8 @@ class BlockMap(object):
             bx2 = (x2 - map_data.min_x) / self.blocksize
             by2 = (y2 - map_data.min_y) / self.blocksize
     
-            block = self.blocks[bx + by * self.width]
-            endblock = self.blocks[bx2 + by2 * self.width]
+            block = self.blocks[bx + by * self.size.x]
+            endblock = self.blocks[bx2 + by2 * self.size.x]
             
             # The linedef is in only one block.
             if block == endblock:
@@ -149,11 +144,11 @@ class BlockMap(object):
                 if bx > bx2:
                     bx, bx2 = bx2, bx
                     
-                block = self.blocks[bx + by * self.width]
+                block = self.blocks[bx + by * self.size.x]
                 while (bx < bx2):
                     block.linedefs.append(index)
                     bx += 1
-                    block = self.blocks[bx + by * self.width]
+                    block = self.blocks[bx + by * self.size.x]
                 block.linedefs.append(index)
             
             # The linedef is vertical, place it in all blocks it passes through.
@@ -161,11 +156,11 @@ class BlockMap(object):
                 if by > by2:
                     by, by2 = by2, by
                     
-                block = self.blocks[bx + by * self.width]
+                block = self.blocks[bx + by * self.size.x]
                 while (by < by2):
                     block.linedefs.append(index)
                     by += 1
-                    block = self.blocks[bx + by * self.width]
+                    block = self.blocks[bx + by * self.size.x]
                 block.linedefs.append(index)
 
             # Draw a Bresenham style line through all the blocks that this line passes through.
@@ -203,20 +198,20 @@ class BlockMap(object):
                         a, b, c = (by * self.blocksize) + yadd - (y1 - map_data.min_y), dx, dy
                         scaled = a * b / c
                         stop = (scaled + (x1 - map_data.min_x)) / self.blocksize
-                        block = self.blocks[bx + by * self.width]
+                        block = self.blocks[bx + by * self.size.x]
                         while (bx != stop):
                             block.linedefs.append(index)
                             bx += xchange
-                            block = self.blocks[bx + by * self.width]
+                            block = self.blocks[bx + by * self.size.x]
                         
                         block.linedefs.append(index)
                         by += ychange
-                        block = self.blocks[bx + by * self.width]
+                        block = self.blocks[bx + by * self.size.x]
                     
                     while (block != endblock):
                         block.linedefs.append(index)
                         bx += xchange
-                        block = self.blocks[bx + by * self.width]
+                        block = self.blocks[bx + by * self.size.x]
 
                     block.linedefs.append(index)
                 
@@ -231,20 +226,20 @@ class BlockMap(object):
                         a, b, c = (bx * self.blocksize) + xadd - (x1 - map_data.min_x), dy, dx
                         scaled = a * b / c
                         stop = (scaled + (y1 - map_data.min_y)) / self.blocksize
-                        block = self.blocks[bx + by * self.width]
+                        block = self.blocks[bx + by * self.size.x]
                         while (by != stop):
                             block.linedefs.append(index)
                             by += ychange
-                            block = self.blocks[bx + by * self.width]
+                            block = self.blocks[bx + by * self.size.x]
 
                         block.linedefs.append(index)
                         bx += xchange;
-                        block = self.blocks[bx + by * self.width]
+                        block = self.blocks[bx + by * self.size.x]
                         
                     while (block != endblock):
                         block.linedefs.append(index)
                         by += ychange
-                        block = self.blocks[bx + by * self.width]
+                        block = self.blocks[bx + by * self.size.x]
                         
                     block.linedefs.append(index)
                     
@@ -270,26 +265,22 @@ class BlockMap(object):
             else:
                 radius = thing_def.radius 
 
-            # Determine thing bounding box.
-            left = thing[map_data.THING_X] - radius
-            top = thing[map_data.THING_Y] - radius
-            right = thing[map_data.THING_X] + radius
-            bottom = thing[map_data.THING_Y] + radius
-            
             # Convert map bounding box to blockmap bounding box.
-            left, top = self.map_to_blockmap(left, top)
-            right, bottom = self.map_to_blockmap(right, bottom)
+            p1 = Vector2(thing[map_data.THING_X] - radius, thing[map_data.THING_Y] - radius)
+            p2 = Vector2(thing[map_data.THING_X] + radius, thing[map_data.THING_Y] + radius)
+            p1 = self.map_to_blockmap(p1)
+            p2 = self.map_to_blockmap(p2)
             
             # Clip bounding box to blockmap dimensions.
-            left = max(0, left)
-            top = max(0, top)
-            right = min(self.width, right)
-            bottom = min(self.height, bottom)
+            left = max(0, p1.x)
+            top = max(0, p1.y)
+            right = min(self.size.x, p2.x)
+            bottom = min(self.size.y, p2.y)
             
             # Fill a box over the blockmap blocks that this thing occupies.
             for y in range(top, bottom + 1):
                 for x in range(left, right + 1):
-                    block = self.blocks[x + y * self.width]
+                    block = self.blocks[x + y * self.size.x]
                     block.things.append(index)
                     
                     
@@ -302,19 +293,19 @@ class BlockMap(object):
         
         for index, area in enumerate(nav_mesh.areas):
             # Convert map bounding box to blockmap bounding box.
-            left, top = self.map_to_blockmap(area.rect.left, area.rect.top)
-            right, bottom = self.map_to_blockmap(area.rect.right, area.rect.bottom)
+            p1 = self.map_to_blockmap(area.rect.p1)
+            p2 = self.map_to_blockmap(area.rect.p2)
             
             # Clip bounding box to blockmap dimensions.
-            left = max(0, left)
-            top = max(0, top)
-            right = min(self.width, right)
-            bottom = min(self.height, bottom)
+            left = max(0, p1.x)
+            top = max(0, p1.y)
+            right = min(self.size.x, p2.x)
+            bottom = min(self.size.y, p2.y)
             
             # Fill a box over the blockmap blocks that this thing occupies.
             for y in range(top, bottom + 1):
                 for x in range(left, right + 1):
-                    block = self.blocks[x + y * self.width]
+                    block = self.blocks[x + y * self.size.x]
                     block.areas.append(index)
         
     
@@ -325,17 +316,17 @@ class BlockMap(object):
         @param map_data: the map data object to generate the blockmap for.
         """
         
-        self.origin_x = map_data.min_x
-        self.origin_y = map_data.min_y
+        self.origin.x = map_data.min_x
+        self.origin.y = map_data.min_y
         
-        self.width = int(map_data.width / self.blocksize) + 1
-        self.height = int(map_data.height / self.blocksize) + 1
+        self.size.x = int(map_data.size.x / self.blocksize) + 1
+        self.size.y = int(map_data.size.y / self.blocksize) + 1
         
         # Create a new blockmap grid of Block objects.
-        self.blocks = [None] * (self.width * self.height)
-        for y in range(0, self.height):
-            for x in range(0, self.width):
-                self.blocks[x + y * self.width] = Block()
+        self.blocks = [None] * (self.size.x * self.size.y)
+        for y in range(0, self.size.y):
+            for x in range(0, self.size.x):
+                self.blocks[x + y * self.size.x] = Block()
 
         # Generate Block contents.
         self.generate_linedefs(map_data)
@@ -360,14 +351,14 @@ class BlockMap(object):
         """
         
         header = BLOCKMAP_HEADER.unpack_from(data)
-        self.origin_x = header[0]
-        self.origin_y = header[1]
-        self.width = header[2]
-        self.height = header[3]
+        self.origin.x = header[0]
+        self.origin.y = header[1]
+        self.size.x = header[2]
+        self.size.y = header[3]
         self.blocksize = 128
         
         # Read offsets.
-        block_count = self.width * self.height
+        block_count = self.size.x * self.size.y
         offset_struct = struct.Struct('<' + ('H' * block_count))
         offsets = offset_struct.unpack_from(data[8:])
         

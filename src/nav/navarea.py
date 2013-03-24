@@ -1,5 +1,5 @@
-from doom.trig import Rectangle
 from nav.navenum import *
+from util.rectangle import Rectangle
 
 
 class NavArea(object):

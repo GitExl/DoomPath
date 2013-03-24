@@ -15,7 +15,7 @@ grid_colors = None
 grid_colors_special = None
 
 
-def render_connections(nav_mesh, surface, camera, x, y):
+def render_connections(nav_mesh, surface, camera, mouse_pos):
     COLOR_RECTANGLE = pygame.Color(7, 23, 31, 255)
     COLOR_TELEPORT = pygame.Color(31, 191, 95, 255)
     COLOR_ACTIVE = pygame.Color(255, 47, 63, 255)
@@ -26,10 +26,10 @@ def render_connections(nav_mesh, surface, camera, x, y):
     for area in nav_mesh.areas:
         for connection in area.connections:
             if (connection.flags & navconnection.CONNECTION_FLAG_TELEPORTER) != 0:
-                x1, y1 = camera.map_to_screen(connection.x1, connection.y1)
-                x2, y2 = camera.map_to_screen(connection.x2, connection.y2)
+                x1, y1 = camera.map_to_screen(connection.rect.left, connection.rect.top)
+                x2, y2 = camera.map_to_screen(connection.rect.right, connection.rect.bottom)
                 
-                if x >= connection.x1 - TELEPORT_SIZE and y >= connection.y1 - TELEPORT_SIZE and x <= connection.x2 + TELEPORT_SIZE and y <= connection.y2 + TELEPORT_SIZE:
+                if mouse_pos.x >= connection.rect.left - TELEPORT_SIZE and mouse_pos.y >= connection.rect.top - TELEPORT_SIZE and mouse_pos.x <= connection.rect.right + TELEPORT_SIZE and mouse_pos.y <= connection.rect.bottom + TELEPORT_SIZE:
                     color = COLOR_ACTIVE
                     connections.add(connection)
                     active = True
@@ -41,13 +41,13 @@ def render_connections(nav_mesh, surface, camera, x, y):
                 pygame.draw.line(surface, color, (x1, y1), (x2, y2), size)
                 
                 if active == True:
-                    sx, sy = camera.map_to_screen(connection.x1 + (connection.x2 - connection.x1) / 2, connection.y1 + (connection.y2 - connection.y1) / 2)
+                    sx, sy = camera.map_to_screen(connection.rect.left + connection.rect.get_width() / 2, connection.rect.top + connection.rect.get_height() / 2)
                     dx, dy = camera.map_to_screen(connection.area_b.rect.left + connection.area_b.rect.get_width() / 2, connection.area_b.rect.top + connection.area_b.rect.get_height() / 2)
                     pygame.draw.line(surface, COLOR_ACTIVE, (sx, sy), (dx, dy), 1)
                 
             else:
-                rx, ry = camera.map_to_screen(connection.x1, connection.y1)
-                width, height = ((connection.x2 - connection.x1) * camera.zoom, (connection.y2 - connection.y1) * camera.zoom)
+                rx, ry = camera.map_to_screen(connection.rect.left, connection.rect.top)
+                width, height = connection.rect.get_width() * camera.zoom, connection.rect.get_height() * camera.zoom
                 
                 rx += 1
                 ry += 1
@@ -68,7 +68,7 @@ def render_connections(nav_mesh, surface, camera, x, y):
                 if width < 1 or height < 1:
                     continue
     
-                if x >= connection.x1 and y >= connection.y1 and x < connection.x2 and y < connection.y2:
+                if connection.rect.is_point_inside(mouse_pos) == True:
                     color = COLOR_ACTIVE
                     connections.add(connection)
                 else:
@@ -80,22 +80,22 @@ def render_connections(nav_mesh, surface, camera, x, y):
     return connections
 
 
-def render_blockmap(map_data, surface, camera, x, y):
-    box_top = y + map_data.config.player_radius
-    box_bottom = y - map_data.config.player_radius
-    box_right = x + map_data.config.player_radius
-    box_left = x - map_data.config.player_radius
+def render_blockmap(map_data, surface, camera, mouse_pos):
+    box_top = mouse_pos.y + map_data.config.player_radius
+    box_bottom = mouse_pos.y - map_data.config.player_radius
+    box_right = mouse_pos.x + map_data.config.player_radius
+    box_left = mouse_pos.x - map_data.config.player_radius
     
-    x1 = int((box_left - map_data.blockmap.origin_x) / map_data.blockmap.blocksize)
-    y1 = int((box_bottom - map_data.blockmap.origin_y) / map_data.blockmap.blocksize)
-    x2 = int((box_right - map_data.blockmap.origin_x) / map_data.blockmap.blocksize) + 1
-    y2 = int((box_top - map_data.blockmap.origin_y) / map_data.blockmap.blocksize) + 1
+    x1 = int((box_left - map_data.blockmap.origin.x) / map_data.blockmap.blocksize)
+    y1 = int((box_bottom - map_data.blockmap.origin.y) / map_data.blockmap.blocksize)
+    x2 = int((box_right - map_data.blockmap.origin.x) / map_data.blockmap.blocksize) + 1
+    y2 = int((box_top - map_data.blockmap.origin.y) / map_data.blockmap.blocksize) + 1
     
     # Draw blockmap.
-    for cx in range(0, map_data.blockmap.width):
-        for cy in range(0, map_data.blockmap.height):
-            bx = int(cx * map_data.blockmap.blocksize + map_data.blockmap.origin_x)
-            by = int(cy * map_data.blockmap.blocksize + map_data.blockmap.origin_y)
+    for cx in range(0, map_data.blockmap.size.x):
+        for cy in range(0, map_data.blockmap.size.y):
+            bx = int(cx * map_data.blockmap.blocksize + map_data.blockmap.origin.x)
+            by = int(cy * map_data.blockmap.blocksize + map_data.blockmap.origin.y)
             pos1 = camera.map_to_screen(bx, by)
             pos2 = (int(map_data.blockmap.blocksize * camera.zoom), int(map_data.blockmap.blocksize * camera.zoom))
             rect = pygame.Rect(pos1, pos2)
@@ -108,7 +108,7 @@ def render_blockmap(map_data, surface, camera, x, y):
             pygame.draw.rect(surface, color, rect, 1)
 
 
-def render_things(map_data, surface, camera, x, y):
+def render_things(map_data, surface, camera):
     color = COLOR_THING
     for thing in map_data.things:
         thing_def = map_data.config.thing_dimensions.get(thing[map_data.THING_TYPE])
@@ -128,7 +128,7 @@ def render_things(map_data, surface, camera, x, y):
         pygame.draw.rect(surface, color, rect, 1)
 
 
-def render_linedefs(map_data, surface, camera, x, y, sector_mark):
+def render_linedefs(map_data, surface, camera, sector_mark):
     color = None
     for linedef in map_data.linedefs:
         front = linedef[map_data.LINEDEF_SIDEDEF_FRONT]
@@ -156,13 +156,13 @@ def render_linedefs(map_data, surface, camera, x, y, sector_mark):
         pygame.draw.line(surface, color, pos1, pos2, 1)
     
     if sector_mark >= 0:
-        center_x, center_y = map_data.get_sector_center(sector_mark)
-        center_x, center_y = camera.map_to_screen(center_x, center_y)
+        center_pos = map_data.get_sector_center(sector_mark)
+        center_pos.x, center_pos.y = camera.map_to_screen(center_pos.x, center_pos.y)
         
-        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_x), int(center_y)), int(5 * camera.zoom))
+        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_pos.x), int(center_pos.y)), int(5 * camera.zoom))
         
 
-def render_navmesh(nav_mesh, surface, camera, mouse_x, mouse_y):
+def render_navmesh(nav_mesh, surface, camera, mouse_pos):
     COLOR_FILL = pygame.Color(15, 15, 15, 255)
     COLOR_HIGHLIGHT = pygame.Color(63, 63, 63, 255)
     COLOR_BORDER = pygame.Color(191, 95, 0, 255)
@@ -170,7 +170,7 @@ def render_navmesh(nav_mesh, surface, camera, mouse_x, mouse_y):
     areas = []
 
     for area in nav_mesh.areas:
-        if area.rect.is_point_inside(mouse_x, mouse_y) == True:
+        if area.rect.is_point_inside(mouse_pos) == True:
             color = COLOR_HIGHLIGHT
             areas.append(area)
         else:
@@ -221,24 +221,24 @@ def render_navgrid_init(nav_grid):
         nav_grid.grid_colors_special[index] = pygame.Color(int(COLOR_ELEMENT_SPECIAL.r * v), int(COLOR_ELEMENT_SPECIAL.g * v), int(COLOR_ELEMENT_SPECIAL.b * v), 255)
 
 
-def render_navgrid(nav_grid, surface, camera, sx, sy):
+def render_navgrid(nav_grid, surface, camera, mouse_pos):
     COLOR_ELEMENT_HIGHLIGHT = pygame.Color(0, 255, 255, 255)
     
-    sx, sy = nav_grid.map_to_element(sx, sy)
+    mouse_pos = nav_grid.map_to_element(mouse_pos)
     rect = pygame.Rect((0, 0), (nav_grid.element_size * camera.zoom, nav_grid.element_size * camera.zoom))
-    z_mod = 255.0 / nav_grid.map_data.depth
+    z_mod = 255.0 / nav_grid.map_data.size.z
     
     elements = []
     for element in nav_grid.elements:
-        if element.x == sx and element.y == sy:
+        if element.pos.x == mouse_pos.x and element.pos.y == mouse_pos.y:
             elements.append(element)
         
-        x, y = nav_grid.element_to_map(element.x, element.y)
-        x, y = camera.map_to_screen(x, y)
+        pos = nav_grid.element_to_map(element.pos)
+        x, y = camera.map_to_screen(pos.x, pos.y)
         rect.top = y - (nav_grid.element_size / 2) * camera.zoom
         rect.left = x - (nav_grid.element_size / 2) * camera.zoom
         
-        v = int((element.z - nav_grid.map_data.min_z) * z_mod)
+        v = int((element.pos.z - nav_grid.map_data.min_z) * z_mod)
         if element.special_sector is not None:
             color = nav_grid.grid_colors_special[v]
         else:
@@ -247,7 +247,7 @@ def render_navgrid(nav_grid, surface, camera, sx, sy):
         pygame.draw.rect(surface, color, rect, 1)
     
     rect = pygame.Rect((0, 0), (nav_grid.element_size * camera.zoom, nav_grid.element_size * camera.zoom))
-    element_hash = sx + (sy * (nav_grid.map_data.width / nav_grid.element_size))
+    element_hash = mouse_pos.x + (mouse_pos.y * (nav_grid.map_data.size.x / nav_grid.element_size))
     element = nav_grid.element_hash.get(element_hash)
     if element is not None:
         element = element[element.keys()[0]]

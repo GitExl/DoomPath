@@ -7,6 +7,7 @@ from doom.mapenum import *
 from doom.trig import point_in_subsector
 from lib import mapdata_create, mapdata_put_nodes
 from plane import plane_setup
+from util.vector import Vector2, Vector3
 import struct
 
 
@@ -62,8 +63,7 @@ class Teleporter(object):
         self.source_line = None
         self.dest_line = None
         self.kind = Teleporter.TELEPORTER_THING
-        self.dest_x = 0
-        self.dest_y = 0
+        self.dest = Vector2()
 
 
 class MapData(object):
@@ -117,9 +117,7 @@ class MapData(object):
         self.min_z = 0x80000
         self.max_z = 0
         
-        self.width = 0
-        self.height = 0
-        self.depth = 0
+        self.size = Vector3()
         
         self.config = None
 
@@ -210,8 +208,7 @@ class MapData(object):
                     print 'Teleporter linedef {} has no valid destination thing.'.format(line_index)
                     continue
                 
-                dest_x = target_thing[self.THING_X]
-                dest_y = target_thing[self.THING_Y]
+                dest = Vector2(target_thing[self.THING_X], target_thing[self.THING_Y])
                 
             # Line to line teleporters.
             elif linedef[self.LINEDEF_ACTION] in self.config.line_teleport_specials:
@@ -228,8 +225,7 @@ class MapData(object):
             teleporter.kind = kind        
             teleporter.source_line = line_index
             if kind == Teleporter.TELEPORTER_THING:
-                teleporter.dest_x = dest_x
-                teleporter.dest_y = dest_y
+                teleporter.dest = dest
             elif kind == Teleporter.TELEPORTER_LINE:
                 teleporter.dest_line = dest_line
                 
@@ -247,8 +243,8 @@ class MapData(object):
             self.max_x = max(self.max_x, vertex[VERTEX_X])
             self.min_y = min(self.min_y, vertex[VERTEX_Y])
             self.max_y = max(self.max_y, vertex[VERTEX_Y])
-        self.width = self.max_x - self.min_x
-        self.height = self.max_y - self.min_y
+        self.size.x = self.max_x - self.min_x
+        self.size.y = self.max_y - self.min_y
 
         # Detect map depth.
         for sector in self.sectors:
@@ -256,7 +252,7 @@ class MapData(object):
             ceilz = sector[SECTOR_CEILZ]
             self.min_z = min(floorz, min(ceilz, self.min_z))
             self.max_z = max(floorz, max(ceilz, self.max_z))
-        self.depth = self.max_z - self.min_z
+        self.size.z = self.max_z - self.min_z
 
 
     def setup_sector_data(self):
@@ -416,8 +412,8 @@ class MapData(object):
             
             else:
                 # Sort threed floors by their floor height at the center of the target sector.
-                center_x, center_y = self.get_sector_center(sector_index)
-                sector_extra.threedfloors = sorted(sector_extra.threedfloors, key=lambda threed: self.get_sector_ceil_z(threed, center_x, center_y))
+                center = self.get_sector_center(sector_index)
+                sector_extra.threedfloors = sorted(sector_extra.threedfloors, key=lambda threed: self.get_sector_ceil_z(threed, center.x, center.y))
                 
                 # Create stack of 3d floor top and bottom sector indices.
                 sector_top = sector_extra.threedfloors[0]
@@ -695,7 +691,7 @@ class MapData(object):
             y_min = max(y1, y_min)
             y_max = min(y2, y_max)
                 
-        return (x_max - x_min) / 2 + x_min, (y_max - y_min) / 2 + y_min
+        return Vector2((x_max - x_min) / 2 + x_min, (y_max - y_min) / 2 + y_min)
     
     
     def get_thing_list(self, type_id):
@@ -755,7 +751,7 @@ class MapData(object):
         
     def get_sector_floor_z(self, sector_index, x, y):
         """
-        Returns the floor Z level at map coordinates x,y inside a specific sector index.
+        Returns the floor Z level at map coordinates pos inside a specific sector index.
         """
         
         plane = self.sector_extra[sector_index].floor_plane
@@ -768,7 +764,7 @@ class MapData(object):
     
     def get_sector_ceil_z(self, sector_index, x, y):
         """
-        Returns the ceiling Z level at map coordinates x,y inside a specific sector index.
+        Returns the ceiling Z level at map coordinates pos inside a specific sector index.
         """
         
         plane = self.sector_extra[sector_index].ceil_plane
@@ -892,4 +888,4 @@ class MapData(object):
         x2 = vertex2[VERTEX_X]
         y2 = vertex2[VERTEX_Y]
         
-        return x1 + int((x2 - x1) / 2), y1 + int((y2 - y1) / 2)
+        return Vector2(x1 + int((x2 - x1) / 2), y1 + int((y2 - y1) / 2))

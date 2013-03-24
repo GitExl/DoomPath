@@ -1,4 +1,7 @@
+from util.rectangle import Rectangle
 import math
+
+
 CONNECTION_FLAG_AB = 0x1
 CONNECTION_FLAG_BA = 0x2
 CONNECTION_FLAG_TELEPORTER = 0x4
@@ -12,27 +15,22 @@ flag_names = {
 
 class NavConnection(object):
     __slots__ = (
-        'x1', 'y1',
-        'x2', 'y2',
+        'rect',
+        'flags',
         
-        'area_a', 'area_b', 'linedef',
-        
-        'flags'
+        'area_a', 'area_b',
+        'linedef'
     )
 
     
     def __init__(self):
-        self.x1 = 0
-        self.y1 = 0
-        self.x2 = 0
-        self.y2 = 0
+        self.rect = Rectangle()
+        self.flags = 0
         
         self.area_a = None
         self.area_b = None
         self.linedef = None
-        
-        self.flags = 0
-        
+
     
     def __repr__(self):
         flagstrings = []
@@ -42,4 +40,4 @@ class NavConnection(object):
                 flagstrings.append(flag_names[mask])
         flagstring = ', '.join(flagstrings)
         
-        return 'connection {}, linedef {}'.format(flagstring, self.linedef)
+        return 'connection {}, {}, linedef {}'.format(self.rect, flagstring, self.linedef)

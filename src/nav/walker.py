@@ -1,37 +1,22 @@
 from doom.mapenum import *
-from doom.trig import point_in_subsector, box_intersects_line, Rectangle
+from doom.trig import point_in_subsector, box_intersects_line
+from util.rectangle import Rectangle
+from util.vector import Vector3
 import config
 
 
 class PositionState(object):
         
     def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.z = 0
-        self.radius = 0
-        self.height = 0
-        
-        self.floorz = -0x8000
-        self.ceilz = 0x8000
-        
-        self.blockline = False
-        self.blockthing = False
-        self.steep = False
-        
-        self.special_sector = None
-        self.moves = False
-        self.sector_index = 0
-        self.base_sector_index = 0
-        self.floor_plane = None
-        
+        self.pos = Vector3()
         self.bbox = Rectangle()
         
+        self.reset(self.pos, 0, 0)
+        
 
-    def reset(self, x, y, z, radius, height):
-        self.x = x
-        self.y = y
-        self.z = z
+    def reset(self, pos, radius, height):
+        self.pos.copy_from(pos)
+        
         self.radius = radius
         self.height = height
         
@@ -45,10 +30,12 @@ class PositionState(object):
         self.special_sector = None
         self.floor_plane = None
 
-        self.bbox.left = x - radius
-        self.bbox.top = y - radius
-        self.bbox.right = x + radius
-        self.bbox.bottom = y + radius
+        self.bbox.set(
+            pos.x - radius,
+            pos.y - radius,
+            pos.x + radius,
+            pos.y + radius
+        )
         
 
 class Walker(object):
@@ -59,50 +46,51 @@ class Walker(object):
         self.state = PositionState()
         
         
-    def get_bb_floor_z(self, x, y, radius, sector_index=None):
+    def get_bb_floor_z(self, pos, radius, sector_index=None):
         if sector_index is not None:
-            floorz = self.map_data.get_sector_floor_z(sector_index, x - radius, y)
-            floorz = max(floorz, self.map_data.get_sector_floor_z(sector_index, x + radius, y))
-            floorz = max(floorz, self.map_data.get_sector_floor_z(sector_index, x - radius, y + radius))
-            floorz = max(floorz, self.map_data.get_sector_floor_z(sector_index, x + radius, y - radius))
+            floorz = self.map_data.get_sector_floor_z(sector_index, pos.x - radius, pos.y)
+            floorz = max(floorz, self.map_data.get_sector_floor_z(sector_index, pos.x + radius, pos.y))
+            floorz = max(floorz, self.map_data.get_sector_floor_z(sector_index, pos.x - radius, pos.y + radius))
+            floorz = max(floorz, self.map_data.get_sector_floor_z(sector_index, pos.x + radius, pos.y - radius))
         else:
-            floorz = self.map_data.get_floor_z(x - radius, y)
-            floorz = max(floorz, self.map_data.get_floor_z(x + radius, y))
-            floorz = max(floorz, self.map_data.get_floor_z(x - radius, y + radius))
-            floorz = max(floorz, self.map_data.get_floor_z(x + radius, y - radius))
+            floorz = self.map_data.get_floor_z(pos.x - radius, pos.y)
+            floorz = max(floorz, self.map_data.get_floor_z(pos.x + radius, pos.y))
+            floorz = max(floorz, self.map_data.get_floor_z(pos.x - radius, pos.y + radius))
+            floorz = max(floorz, self.map_data.get_floor_z(pos.x + radius, pos.y - radius))
         
         return floorz
     
     
-    def get_bb_ceil_z(self, x, y, radius, sector_index=None):
+    def get_bb_ceil_z(self, pos, radius, sector_index=None):
         if sector_index is not None:
-            ceilz = self.map_data.get_sector_ceil_z(sector_index, x - radius, y)
-            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, x + radius, y))
-            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, x - radius, y + radius))
-            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, x + radius, y - radius))
+            ceilz = self.map_data.get_sector_ceil_z(sector_index, pos.x - radius, pos.y)
+            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos.x + radius, pos.y))
+            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos.x - radius, pos.y + radius))
+            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos.x + radius, pos.y - radius))
         else:
-            ceilz = self.map_data.get_ceil_z(x - radius, y)
-            ceilz = min(ceilz, self.map_data.get_ceil_z(x + radius, y))
-            ceilz = min(ceilz, self.map_data.get_ceil_z(x - radius, y + radius))
-            ceilz = min(ceilz, self.map_data.get_ceil_z(x + radius, y - radius))
+            ceilz = self.map_data.get_ceil_z(pos.x - radius, pos.y)
+            ceilz = min(ceilz, self.map_data.get_ceil_z(pos.x + radius, pos.y))
+            ceilz = min(ceilz, self.map_data.get_ceil_z(pos.x - radius, pos.y + radius))
+            ceilz = min(ceilz, self.map_data.get_ceil_z(pos.x + radius, pos.y - radius))
         
         return ceilz
     
         
-    def check_position(self, x, y, z, radius, height):
+    def check_position(self, pos, radius, height):
         state = self.state
-        state.reset(x, y, z, radius, height)
+        state.reset(pos, radius, height)
                 
-        subsector_index = point_in_subsector(self.map_data.c_mapdata, x, y)
+        subsector_index = point_in_subsector(self.map_data.c_mapdata, pos.x, pos.y)
         state.sector_index = self.map_data.subsector_sectors[subsector_index]
         state.base_sector_index = state.sector_index
             
         self.check_sector_position(state)
         
-        x1, y1 = self.map_data.blockmap.map_to_blockmap(state.bbox.left, state.bbox.top)
-        x2, y2 = self.map_data.blockmap.map_to_blockmap(state.bbox.right, state.bbox.bottom)
+        p1 = self.map_data.blockmap.map_to_blockmap(state.bbox.p1)
+        p2 = self.map_data.blockmap.map_to_blockmap(state.bbox.p2)
+        rect = Rectangle(p1.x, p1.y, p2.x, p2.y)
         
-        linedefs, things = self.map_data.blockmap.get_region(x1, y1, x2, y2)
+        linedefs, things = self.map_data.blockmap.get_region(rect)
         if len(linedefs) > 0:
             linedefs = set(linedefs)
             self.check_block_linedefs(state, linedefs)
@@ -115,11 +103,11 @@ class Walker(object):
             collision = True
         
         # Ceiling is too low.
-        elif z + height > state.ceilz and state.special_sector is None:
+        elif state.pos.z + height > state.ceilz and state.special_sector is None:
             collision = True
         
         # Z is below floor.
-        elif z < state.floorz:
+        elif state.pos.z < state.floorz:
             collision = True
             
         else:
@@ -169,6 +157,8 @@ class Walker(object):
 
 
     def check_block_things(self, state, things):
+        rect = Rectangle()
+        
         for thing_index in things:
             thing = self.map_data.things[thing_index]
             thing_type = thing[self.map_data.THING_TYPE]
@@ -191,12 +181,13 @@ class Walker(object):
             thing_x = thing[self.map_data.THING_X]
             thing_y = thing[self.map_data.THING_Y]
 
-            rect = Rectangle()
-            rect.left = thing_x - thing_radius
-            rect.top = thing_y - thing_radius
-            rect.right = thing_x + thing_radius
-            rect.bottom = thing_y + thing_radius
-            if state.bbox.intersects(rect) == False:
+            rect.set(
+                thing_x - thing_radius,
+                thing_y - thing_radius,
+                thing_x + thing_radius,
+                thing_y + thing_radius
+            )
+            if state.bbox.intersects_with(rect) == False:
                 continue
             
             # Determine z position.
@@ -208,16 +199,16 @@ class Walker(object):
                     thing_z += thing[THING_HEXEN_Z]
                 
             # Intersection with a thing.
-            if state.z + state.height >= thing_z and state.z <= thing_z + thing_height:
+            if state.pos.z + state.height >= thing_z and state.pos.z <= thing_z + thing_height:
                 state.blockthing = True
                 
-            # Above this thing, move the floor up to it.
-            if state.z >= thing_z:
+            # Point is above this thing, move the floor up to it.
+            if state.pos.z >= thing_z:
                 state.floorz = max(state.floorz, thing_z + thing_height)
                 state.special_sector = None
                 
             # Below this thing, move the ceiling down to it.
-            if state.z + state.height <= thing_z + thing_height:
+            if state.pos.z + state.height <= thing_z + thing_height:
                 state.ceilz = min(state.ceilz, thing_z)
 
     
@@ -226,16 +217,16 @@ class Walker(object):
 
         # Find the floor and ceiling sectors to collide with.
         for stack in sector_extra.threedstack:
-            sector_floor_z = self.map_data.get_sector_floor_z(stack[0], state.x, state.y)
-            sector_ceil_z = self.map_data.get_sector_ceil_z(stack[1], state.x, state.y)
+            sector_floor_z = self.map_data.get_sector_floor_z(stack[0], state.pos.x, state.pos.y)
+            sector_ceil_z = self.map_data.get_sector_ceil_z(stack[1], state.pos.x, state.pos.y)
             
-            if state.z >= sector_floor_z and state.z <= sector_ceil_z:
+            if state.pos.z >= sector_floor_z and state.pos.z <= sector_ceil_z:
                 floor_sector_index = stack[0]
                 ceil_sector_index = stack[1]
                 break
             
             # Test step up height.
-            if state.z + self.config.step_height >= sector_floor_z and state.z + self.config.step_height <= sector_ceil_z:
+            if state.pos.z + self.config.step_height >= sector_floor_z and state.pos.z + self.config.step_height <= sector_ceil_z:
                 floor_sector_index = stack[0]
                 ceil_sector_index = stack[1]
                 break
@@ -250,21 +241,21 @@ class Walker(object):
         floor_plane = self.map_data.sector_extra[floor_sector_index].floor_plane
         if floor_plane is not None:
             if state.sector_index != floor_sector_index:
-                sector_floor_z = self.get_bb_floor_z(state.x, state.y, state.radius, sector_index=floor_sector_index)
+                sector_floor_z = self.get_bb_floor_z(state.pos, state.radius, sector_index=floor_sector_index)
             else:
-                sector_floor_z = self.get_bb_floor_z(state.x, state.y, state.radius)
+                sector_floor_z = self.get_bb_floor_z(state.pos, state.radius)
             if floor_plane.c < self.config.slope_steep:
                 state.steep = True
         else:
-            sector_floor_z = self.map_data.get_sector_floor_z(floor_sector_index, state.x, state.y)
+            sector_floor_z = self.map_data.get_sector_floor_z(floor_sector_index, state.pos.x, state.pos.y)
         
         if self.map_data.sector_extra[ceil_sector_index].ceil_plane is not None:
             if state.sector_index != ceil_sector_index:
-                sector_ceil_z = self.get_bb_ceil_z(state.x, state.y, state.radius, sector_index=ceil_sector_index)
+                sector_ceil_z = self.get_bb_ceil_z(state.pos, state.radius, sector_index=ceil_sector_index)
             else:
-                sector_ceil_z = self.get_bb_ceil_z(state.x, state.y, state.radius)
+                sector_ceil_z = self.get_bb_ceil_z(state.pos, state.radius)
         else:
-            sector_ceil_z = self.map_data.get_sector_ceil_z(ceil_sector_index, state.x, state.y)
+            sector_ceil_z = self.map_data.get_sector_ceil_z(ceil_sector_index, state.pos.x, state.pos.y)
             
         # Keep this new floor as the special floor.
         floor_extra = self.map_data.sector_extra[floor_sector_index]

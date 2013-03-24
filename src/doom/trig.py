@@ -5,40 +5,8 @@
 Utility trigonometric functions.
 """
 
-from ctypes import cdll, c_int, c_void_p, c_short, c_byte
-
-
-class Rectangle(object):
-    
-    __slots__ = ('left', 'top', 'right', 'bottom')
-    
-    
-    def __init__(self, left=0, top=0, right=0, bottom=0):
-        self.left = left
-        self.top = top
-        self.right = right
-        self.bottom = bottom
-        
-    
-    def get_width(self):
-        return self.right - self.left
-    
-    
-    def get_height(self):
-        return self.bottom - self.top
-    
-    
-    def intersects(self, rect):
-        return (self.left > rect.right or rect.right < self.left or rect.top > self.bottom or rect.bottom < self.top)
-
-    
-    def is_point_inside(self, x, y):
-        return (x >= self.left and x <= self.right and y >= self.top and y <= self.bottom)
-    
-    
-    def __repr__(self):
-        return '{} x {}, {} x {}'.format(self.left, self.top, self.right, self.bottom)
-    
+from ctypes import cdll, c_void_p, c_short, c_byte
+   
 
 
 doompathlib = cdll.doompath
@@ -60,7 +28,6 @@ CLIP_BOTTOM = 8
 def box_intersects_line(rect, x1, y1, x2, y2):
     """
     Cohen-Sutherland based line-AABB clipping algorithm.
-
     """
     
     if x1 > x2:
