@@ -1,5 +1,4 @@
 from doom.mapdata import Teleporter
-from doom.mapenum import LINEDEF_VERTEX_1, LINEDEF_VERTEX_2, VERTEX_X, VERTEX_Y
 from doom.plane import Plane
 from nav import navconnection
 from nav.navarea import NavArea
@@ -140,14 +139,12 @@ class NavMesh(object):
                 continue
             
             # Create the teleport connection line from the linedef vertices.
-            linedef = self.map_data.linedefs[teleporter.source_line]
-            vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
-            vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]            
+            linedef = self.map_data.linedefs[teleporter.source_line]           
             rect.set(
-                vertex1[VERTEX_X],
-                vertex1[VERTEX_Y],
-                vertex2[VERTEX_X],
-                vertex2[VERTEX_Y]
+                linedef.vertex1.x,
+                linedef.vertex1.y,
+                linedef.vertex2.x,
+                linedef.vertex2.y
             )
 
             # Place a teleporter connection in all intersecting source areas.

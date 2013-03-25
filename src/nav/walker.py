@@ -1,4 +1,4 @@
-from doom.mapenum import *
+from doom.mapobjects import Linedef
 from util.rectangle import Rectangle
 from util.vector import Vector3
 import config
@@ -121,39 +121,37 @@ class Walker(object):
     def check_block_linedefs(self, state, linedefs):
         for line_index in linedefs:
             linedef = self.map_data.linedefs[line_index]
-            vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
-            vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
-            lx1 = vertex1[VERTEX_X]
-            ly1 = vertex1[VERTEX_Y]
-            lx2 = vertex2[VERTEX_X]
-            ly2 = vertex2[VERTEX_Y] 
+            lx1 = linedef.vertex1.x
+            ly1 = linedef.vertex1.y
+            lx2 = linedef.vertex2.x
+            ly2 = linedef.vertex2.y 
             
             # Ignore lines that do not intersect.                   
             if state.bbox.intersects_with_line(lx1, ly1, lx2, ly2) == False:
                 continue
             
             # Cannot pass through impassible flagged lines.
-            if (linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_IMPASSIBLE) != 0:
+            if (linedef.flags & Linedef.FLAG_IMPASSIBLE) != 0:
                 state.blockline = True
             
             # Test each sidedef on the line.
             # Frontside.
-            sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_FRONT]
-            if sidedef_index == SIDEDEF_NONE:
+            sidedef_index = linedef.sidedef_front
+            if sidedef_index == Linedef.SIDEDEF_NONE:
                 state.blockline = True
             else:
                 sidedef = self.map_data.sidedefs[sidedef_index]
-                state.sector_index = sidedef[SIDEDEF_SECTOR]
+                state.sector_index = self.map_data.sectors.index(sidedef.sector)
                 if state.sector_index != state.base_sector_index:
                     self.check_sector_position(state)
             
             # Backside.
-            sidedef_index = linedef[self.map_data.LINEDEF_SIDEDEF_BACK]
-            if sidedef_index == SIDEDEF_NONE:
+            sidedef_index = linedef.sidedef_back
+            if sidedef_index == Linedef.SIDEDEF_NONE:
                 state.blockline = True
             else:
                 sidedef = self.map_data.sidedefs[sidedef_index]
-                state.sector_index = sidedef[SIDEDEF_SECTOR]
+                state.sector_index = self.map_data.sectors.index(sidedef.sector)
                 if state.sector_index != state.base_sector_index:
                     self.check_sector_position(state)
 
@@ -165,8 +163,8 @@ class Walker(object):
             
             # Parse custom bridge thing size.
             if self.config.bridge_custom_type is not None and thing_type == self.config.bridge_custom_type:
-                thing_radius = thing[THING_HEXEN_ARG0]
-                thing_height = thing[THING_HEXEN_ARG1]
+                thing_radius = thing.args[0]
+                thing_height = thing.args[1]
                 thing_flags = 0
                 
             else:
@@ -197,7 +195,7 @@ class Walker(object):
             else:
                 thing_z = self.map_data.get_floor_z(thing_x, thing_y)                            
                 if self.map_data.is_hexen == True:
-                    thing_z += thing[THING_HEXEN_Z]
+                    thing_z += thing.z
                 
             # Intersection with a thing.
             if state.pos.z + state.height >= thing_z and state.pos.z <= thing_z + thing_height:

@@ -1,30 +1,17 @@
 #!/usr/bin/env python
 #coding=utf8
 
-from ctypes import create_string_buffer
 from doom import blockmap
-from doom.mapenum import *
-
+from doom.mapobjects import Thing, Linedef, Sidedef, Vertex, Segment, SubSector, Sector, Node
 from plane import plane_setup
 from util.vector import Vector2, Vector3
-import struct
 
 
-# Map data structures.
-VERTEX_DATA = struct.Struct('<hh')
-SECTOR_DATA = struct.Struct('<hh8s8shhh')
-SIDEDEF_DATA = struct.Struct('<hh8s8s8sh')
-NODE_DATA = struct.Struct('<hhhhhhhhhhhhHH')
-SUBSECTOR_DATA = struct.Struct('<HH')
-SEGMENT_DATA = struct.Struct('<HHhHhh')
-
-# Doom specific map data structures.
-THINGS_DATA_DOOM = struct.Struct('<hhHHH')
-LINEDEF_DATA_DOOM = struct.Struct('<HHHHHHH')
-
-# Hexen specific map data structures.
-THINGS_DATA_HEXEN = struct.Struct('<HhhhHHHBBBBBB')
-LINEDEF_DATA_HEXEN = struct.Struct('<HHHBBBBBBHH')
+# 3D floor line special flag values.
+THREED_KIND_SOLID = 0x01
+THREED_KIND_SWIMMABLE = 0x02
+THREED_KIND_NONSOLID = 0x04
+THREED_FLAG_IGNORE_BOTTOM = 0x08
 
 
 class SectorExtra(object):
@@ -72,20 +59,8 @@ class MapData(object):
     Does preprocessing for 3d floors, slopes and marks special sectors that may move during gameplay.
     """
     
-    # Normalized thing data indices.
-    THING_X = 0
-    THING_Y = 0
-    THING_ANGLE = 0
-    THING_TYPE = 0
-    THING_FLAGS = 0
-    
-    # Normalized linedef data indices.
-    LINEDEF_ACTION = 0
-    LINEDEF_SIDEDEF_FRONT = 0
-    LINEDEF_SIDEDEF_BACK = 0
-    
 
-    def __init__(self, wad_file, lumpname):
+    def __init__(self, wad_file, lump_name):
         # Raw map data.
         self.vertices = None
         self.linedefs = None
@@ -118,50 +93,68 @@ class MapData(object):
         
         self.config = None
 
-        # Get header lump index.
-        headerindex = wad_file.get_index(lumpname)
+        # Find header lump index.
+        headerindex = wad_file.get_index(lump_name)
+        if headerindex == -1:
+            print 'Cannot find map lump {}'.format(lump_name)
+        
+        # Detect Hexen mode from the presence of a BEHAVIOR lump.
         if len(wad_file.lumps) > headerindex + 11:
             if wad_file.lumps[headerindex + 11].name == 'BEHAVIOR':
                 self.is_hexen = True
-                
-        # Set indices for Hexen\Doom format access. 
-        if self.is_hexen == True:
-            self.THING_X = THING_HEXEN_X
-            self.THING_Y = THING_HEXEN_Y
-            self.THING_ANGLE = THING_HEXEN_ANGLE
-            self.THING_TYPE = THING_HEXEN_TYPE
-            self.THING_FLAGS = THING_HEXEN_FLAGS
-            
-            self.LINEDEF_ACTION = LINEDEF_HEXEN_ACTION
-            self.LINEDEF_SIDEDEF_FRONT = LINEDEF_HEXEN_SIDEDEF_FRONT
-            self.LINEDEF_SIDEDEF_BACK = LINEDEF_HEXEN_SIDEDEF_BACK
-            
-        else:
-            self.THING_X = THING_DOOM_X
-            self.THING_Y = THING_DOOM_Y
-            self.THING_ANGLE = THING_DOOM_ANGLE
-            self.THING_TYPE = THING_DOOM_TYPE
-            self.THING_FLAGS = THING_DOOM_FLAGS
-            
-            self.LINEDEF_ACTION = LINEDEF_DOOM_TYPE
-            self.LINEDEF_SIDEDEF_FRONT = LINEDEF_DOOM_SIDEDEF_FRONT
-            self.LINEDEF_SIDEDEF_BACK = LINEDEF_DOOM_SIDEDEF_BACK
-
-        # Read format-specific data.
-        if self.is_hexen == True:
-            self.things, self.things_data = self.read_datalump(wad_file, headerindex + 1, THINGS_DATA_HEXEN)
-            self.linedefs, self.linedefs_data = self.read_datalump(wad_file, headerindex + 2, LINEDEF_DATA_HEXEN)
-        else:
-            self.things, self.things_data = self.read_datalump(wad_file, headerindex + 1, THINGS_DATA_DOOM)
-            self.linedefs, self.linedefs_data = self.read_datalump(wad_file, headerindex + 2, LINEDEF_DATA_DOOM)
         
-        # Read other data lumps.
-        self.sidedefs, self.sidedefs_data = self.read_datalump(wad_file, headerindex + 3, SIDEDEF_DATA)
-        self.vertices, self.vertices_data = self.read_datalump(wad_file, headerindex + 4, VERTEX_DATA)
-        self.segments, self.segments_data = self.read_datalump(wad_file, headerindex + 5, SEGMENT_DATA)
-        self.subsectors, self.subsectors_data = self.read_datalump(wad_file, headerindex + 6, SUBSECTOR_DATA)
-        self.nodes, self.nodes_data = self.read_datalump(wad_file, headerindex + 7, NODE_DATA)
-        self.sectors, self.sectors_data = self.read_datalump(wad_file, headerindex + 8, SECTOR_DATA)
+        # Read data lumps.
+        self.things = self.read_data(wad_file, headerindex, Thing)
+        self.linedefs = self.read_data(wad_file, headerindex, Linedef)
+        self.sidedefs = self.read_data(wad_file, headerindex, Sidedef)
+        self.vertices = self.read_data(wad_file, headerindex, Vertex)
+        self.segments = self.read_data(wad_file, headerindex, Segment)
+        self.subsectors = self.read_data(wad_file, headerindex, SubSector)
+        self.nodes = self.read_data(wad_file, headerindex, Node)
+        self.sectors = self.read_data(wad_file, headerindex, Sector)
+        
+        # Change indices to references where needed.
+        self.set_data_references(self.linedefs)
+        self.set_data_references(self.segments)
+    
+    
+    def read_data(self, wad_file, index, source_class):
+        """
+        Reads struct data from a WAD lump.
+        
+        @param wad_file: WAD file object to read from.
+        @param index: the index of the map header lump.
+        @param source_class: a class definition describing how to load the lump's data.
+        
+        @return: a list of source_class objects with the data loaded into them.
+        """ 
+
+        data = wad_file.get_lump_index(index + source_class.WAD_INDEX).get_data()
+
+        if self.is_hexen == True:
+            item_struct = source_class.STRUCT_HEXEN
+        else:
+            item_struct = source_class.STRUCT_DOOM 
+
+        datalist = []
+        offset = 0
+        while offset < len(data):
+            item = source_class()
+            
+            struct_data = data[offset:offset + item_struct.size]
+            item_data = item_struct.unpack(struct_data)
+            
+            item.unpack_from(item_data, self.is_hexen)
+            datalist.append(item)
+            
+            offset += item_struct.size
+        
+        return datalist
+    
+    
+    def set_data_references(self, datalist):
+        for item in datalist:
+            item.set_references(self)
                 
         
     def setup(self, config):
@@ -193,7 +186,7 @@ class MapData(object):
         for line_index, linedef in enumerate(self.linedefs):
             
             # Line to thing teleporters.
-            if linedef[self.LINEDEF_ACTION] in self.config.thing_teleport_specials:
+            if linedef.action in self.config.thing_teleport_specials:
                 kind = Teleporter.TELEPORTER_THING
                 target_thing = self.get_destination_from_teleport(line_index)
                 if target_thing is None:
@@ -203,7 +196,7 @@ class MapData(object):
                 dest = Vector2(target_thing[self.THING_X], target_thing[self.THING_Y])
                 
             # Line to line teleporters.
-            elif linedef[self.LINEDEF_ACTION] in self.config.line_teleport_specials:
+            elif linedef.action in self.config.line_teleport_specials:
                 kind = Teleporter.TELEPORTER_LINE
                 dest_line = self.get_line_destination(line_index)
                 if dest_line is None:
@@ -231,17 +224,17 @@ class MapData(object):
         
         # Calculate map width and height.
         for vertex in self.vertices:
-            self.min_x = min(self.min_x, vertex[VERTEX_X])
-            self.max_x = max(self.max_x, vertex[VERTEX_X])
-            self.min_y = min(self.min_y, vertex[VERTEX_Y])
-            self.max_y = max(self.max_y, vertex[VERTEX_Y])
+            self.min_x = min(self.min_x, vertex.x)
+            self.max_x = max(self.max_x, vertex.x)
+            self.min_y = min(self.min_y, vertex.y)
+            self.max_y = max(self.max_y, vertex.y)
         self.size.x = self.max_x - self.min_x
         self.size.y = self.max_y - self.min_y
 
         # Detect map depth.
         for sector in self.sectors:
-            floorz = sector[SECTOR_FLOORZ]
-            ceilz = sector[SECTOR_CEILZ]
+            floorz = sector.floorz
+            ceilz = sector.ceilingz
             self.min_z = min(floorz, min(ceilz, self.min_z))
             self.max_z = max(floorz, max(ceilz, self.max_z))
         self.size.z = self.max_z - self.min_z
@@ -263,27 +256,22 @@ class MapData(object):
         # sector for the subsector.
         self.subsector_sectors = []
         for subsector in self.subsectors:
-            segment = self.segments[subsector[SUBSECTOR_FIRST_SEG]]
-            
-            linedef = self.linedefs[segment[SEGMENT_LINEDEF]]
-            if segment[SEGMENT_SIDE] == 1:
-                sidedef = linedef[self.LINEDEF_SIDEDEF_BACK]
+            segment = self.segments[subsector.first_segment]
+            if segment.direction == Segment.DIRECTION_OPPOSITE:
+                sidedef = self.sidedefs[segment.linedef.sidedef_back]
             else:
-                sidedef = linedef[self.LINEDEF_SIDEDEF_FRONT]
+                sidedef = self.sidedefs[segment.linedef.sidedef_front]
             
-            self.subsector_sectors.append(self.sidedefs[sidedef][SIDEDEF_SECTOR])
+            self.subsector_sectors.append(sidedef.sector)
         
         # Build a list of linedefs contained in each sector.
         for linedef in self.linedefs:
-            front = linedef[self.LINEDEF_SIDEDEF_FRONT]
-            back = linedef[self.LINEDEF_SIDEDEF_BACK]
+            if linedef.sidedef_front != Linedef.SIDEDEF_NONE:
+                sidedef = self.sidedefs[linedef.sidedef_front]
+            if linedef.sidedef_back != Linedef.SIDEDEF_NONE:
+                sidedef = self.sidedefs[linedef.sidedef_back]
             
-            if front != SIDEDEF_NONE:
-                sector = self.sidedefs[front][SIDEDEF_SECTOR]
-                self.sector_extra[sector].linedefs.append(linedef)
-            if back != SIDEDEF_NONE:
-                sector = self.sidedefs[back][SIDEDEF_SECTOR]
-                self.sector_extra[sector].linedefs.append(linedef)
+            self.sector_extra[sidedef.sector].linedefs.append(linedef)
 
         # Generate other sector structures.
         self.setup_slopes()
@@ -296,8 +284,11 @@ class MapData(object):
         Detects sectors that are affected by stair builder specials.
         """
         
+        # FIXME: this locks up in an infinite loop.
+        return
+
         for linedef in self.linedefs:
-            action = linedef[self.LINEDEF_ACTION]
+            action = linedef.action
             
             is_boom = (action >= 0x3000 and action <= 0x33FF)
             if not action in self.config.stair_specials and not is_boom:
@@ -311,9 +302,9 @@ class MapData(object):
                 ignore_floor_texture = False
             
             if self.is_hexen:
-                tag = linedef[LINEDEF_DOOM_TAG]
+                tag = linedef.tag
             else:
-                tag = linedef[LINEDEF_HEXEN_ARG0]
+                tag = linedef.args[0]
                 
             # Build stair list for each starting sector.
             start_sectors = self.get_tag_sectors(tag)
@@ -332,25 +323,25 @@ class MapData(object):
                     for sector_linedef in sector_extra.linedefs:
                         
                         # Ignore lindefs with only one side.
-                        if (sector_linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_TWOSIDED) == 0:
+                        if (sector_linedef.flags & Linedef.FLAG_TWOSIDED) == 0:
                             continue
-                        if sector_linedef[self.LINEDEF_SIDEDEF_FRONT] == SIDEDEF_NONE:
+                        if sector_linedef.sidedef_front == Linedef.SIDEDEF_NONE:
                             continue
-                        if sector_linedef[self.LINEDEF_SIDEDEF_BACK] == SIDEDEF_NONE:
+                        if sector_linedef.sidedef_back == Linedef.SIDEDEF_NONE:
                             continue
                         
                         # If the front sidedef points to the current sector, the back sidedef references the new sector.
-                        sidedef_front = self.sidedefs[sector_linedef[self.LINEDEF_SIDEDEF_FRONT]]
-                        sidedef_back = self.sidedefs[sector_linedef[self.LINEDEF_SIDEDEF_BACK]]
-                        if sidedef_front[SIDEDEF_SECTOR] == current_sector_index:
-                            next_sector_index = sidedef_back[SIDEDEF_SECTOR]
+                        sidedef = self.sidedefs[sector_linedef.sidedef_front]
+                        if sidedef.sector == current_sector_index:
+                            sidedef = self.sidedefs[sector_linedef.sidedef_back]
+                            next_sector_index = sidedef.sector
                             break
                     else:
                         break
 
                     if ignore_floor_texture == False:
                         next_sector = self.sectors[next_sector_index]
-                        if next_sector[SECTOR_FLOORTEX] != current_sector[SECTOR_FLOORTEX]:
+                        if next_sector.texture_floor != current_sector.texture_floor:
                             break
                     current_sector_index = next_sector_index 
                 
@@ -365,17 +356,16 @@ class MapData(object):
         # Create lists of 3d floors in each sector.
         if self.config.threedfloor_special is not None:
             for linedef in self.linedefs:
-                action = linedef[self.LINEDEF_ACTION]
+                action = linedef.special
                 if action == self.config.threedfloor_special:
-                    
-                    sidedef = linedef[self.LINEDEF_SIDEDEF_FRONT]
-                    if sidedef == SIDEDEF_NONE:
+                    sidedef = linedef.sidedef_front
+                    if sidedef == Linedef.SIDEDEF_NONE:
                         continue
                     
-                    control_sector_index = self.sidedefs[sidedef][SIDEDEF_SECTOR]
+                    control_sector_index = sidedef.sector
                     control_sector = self.sectors[control_sector_index]
-                    tag = linedef[LINEDEF_HEXEN_ARG0]
-                    kind = linedef[LINEDEF_HEXEN_ARG1]
+                    tag = linedef.args[0]
+                    kind = linedef.args[1]
                     
                     target_sectors = self.get_tag_sectors(tag)
                     if len(target_sectors) == 0:
@@ -387,9 +377,7 @@ class MapData(object):
                     
                     # Solid, swap top and bottom.
                     if (kind & THREED_KIND_SOLID) != 0:
-                        temp = control_sector[SECTOR_CEILZ]
-                        control_sector[SECTOR_CEILZ] = control_sector[SECTOR_FLOORZ]
-                        control_sector[SECTOR_FLOORZ] = temp
+                        control_sector.ceilingz, control_sector.floorz = control_sector.floorz, control_sector.ceilz
                     
                     for sector_index in target_sectors:
                         self.sector_extra[sector_index].threedfloors.append(control_sector_index)
@@ -444,16 +432,16 @@ class MapData(object):
         ceil_slopes = 0
         
         for line in self.linedefs:
-            line_action = line[self.LINEDEF_ACTION]
+            line_action = line.action
             
             sloped = False
             if self.is_hexen:
                 # Hexen slope floor special.
                 if line_action == self.config.slope_special:
-                    align_floor = line[LINEDEF_HEXEN_ARG0] & 3
-                    align_ceiling = line[LINEDEF_HEXEN_ARG1] & 3
+                    align_floor = line.args[0] & 3
+                    align_ceiling = line.args[1] & 3
                     if align_ceiling == 0:
-                        align_ceiling = (line[LINEDEF_HEXEN_ARG0] >> 2) & 3
+                        align_ceiling = (line.args[0] >> 2) & 3
                         
                     sloped = True
                 
@@ -488,11 +476,11 @@ class MapData(object):
                 sloped = True
             
             if sloped == True:
-                front = line[self.LINEDEF_SIDEDEF_FRONT]
-                frontsector = self.sidedefs[front][SIDEDEF_SECTOR] 
+                front = line.sidedef_front
+                frontsector = front.sector 
                 
-                back = line[self.LINEDEF_SIDEDEF_BACK]
-                backsector = self.sidedefs[back][SIDEDEF_SECTOR]
+                back = line.sidedef_back
+                backsector = back.sector
                 
                 # Floor plane?
                 if align_floor == ALIGN_FRONT:
@@ -551,8 +539,8 @@ class MapData(object):
         if self.is_hexen == True:
             self.linedef_ids = {}
             for index, linedef in enumerate(self.linedefs):
-                if linedef[self.LINEDEF_ACTION] in self.config.line_identification_specials:
-                    line_id = linedef[LINEDEF_HEXEN_ARG0] + (linedef[LINEDEF_HEXEN_ARG4] * 256)
+                if linedef.special in self.config.line_identification_specials:
+                    line_id = linedef.args[0] + (linedef.args[1] * 256)
                     self.linedef_ids[line_id] = index
         
     
@@ -563,8 +551,8 @@ class MapData(object):
         
         # Detect tagged and special sectors, these are likely going to move.
         for sector_index, sector in enumerate(self.sectors):
-            special = sector[SECTOR_SPECIAL]
-            tag = sector[SECTOR_TAG]
+            special = sector.action
+            tag = sector.tag
             value = self.config.sector_types.get(special)
             
             # Special tags.
@@ -583,18 +571,18 @@ class MapData(object):
             
         # Detect linedef activation.
         for linedef in self.linedefs:
-            line_type = linedef[self.LINEDEF_ACTION]
+            line_type = linedef.action
             if self.is_hexen:
-                line_tag = linedef[LINEDEF_HEXEN_ARG0]
+                line_tag = linedef.args[0]
             else:
-                line_tag = linedef[LINEDEF_DOOM_TAG]
+                line_tag = linedef.tag
                 
             # Activates sector on back side?
             if line_tag == 0 and line_type in self.config.backside_activation_specials:
-                sidedef = linedef[self.LINEDEF_SIDEDEF_BACK]
-                if sidedef != SIDEDEF_NONE:
+                sidedef = linedef.sidedef_back
+                if sidedef != Linedef.SIDEDEF_NONE:
                     sidedef = self.sidedefs[sidedef]
-                    sector_index = sidedef[SIDEDEF_SECTOR]
+                    sector_index = sidedef.sector
                     self.apply_extra_effect(sector_index, 'moves')
             
             # Activates tagged sector?
@@ -616,33 +604,11 @@ class MapData(object):
                     
                     # Backside activation of door triggers.
                     elif activation_type >= 6 and line_tag == 0:
-                        sidedef = linedef[self.LINEDEF_SIDEDEF_BACK]
-                        if sidedef != SIDEDEF_NONE:
+                        sidedef = linedef.sidedef_back
+                        if sidedef != Linedef.SIDEDEF_NONE:
                             sidedef = self.sidedefs[sidedef]
-                            sector_index = sidedef[SIDEDEF_SECTOR]
+                            sector_index = sidedef.sector
                             self.apply_extra_effect(sector_index, 'moves')
-                  
-
-    def read_datalump(self, wad_file, index, datastruct):
-        """
-        Reads struct data from a WAD lump.
-        
-        @param wad_file: WAD file object to read from.
-        @param index: the lump index to read.
-        @param datastruct: a Struct object that determines the data format to read.
-        
-        @return: a tuple containing a list of data that was read, and the raw data itself.
-        """ 
-        
-        datalist = []
-        data = wad_file.get_lump_index(index).get_data()
-        datasize = datastruct.size
-
-        for index in range(0, len(data), datasize):
-            item = list(datastruct.unpack(data[index:index + datasize]))
-            datalist.append(item)
-        
-        return datalist, data
     
     
     def get_tag_sectors(self, tag):
@@ -653,7 +619,7 @@ class MapData(object):
         sectors = []
         
         for sector_index, sector in enumerate(self.sectors):
-            if sector[SECTOR_TAG] == tag:
+            if sector.tag == tag:
                 sectors.append(sector_index)
             
         return sectors
@@ -670,18 +636,10 @@ class MapData(object):
         y_max = 0x8000
         
         for linedef in self.sector_extra[sector_index].linedefs:
-            vertex1 = self.vertices[linedef[LINEDEF_VERTEX_1]]
-            vertex2 = self.vertices[linedef[LINEDEF_VERTEX_2]]
-            
-            x1 = vertex1[VERTEX_X]
-            y1 = vertex1[VERTEX_Y]
-            x2 = vertex2[VERTEX_X]
-            y2 = vertex2[VERTEX_Y]
-            
-            x_min = max(x1, x_min)
-            x_max = min(x2, x_max)
-            y_min = max(y1, y_min)
-            y_max = min(y2, y_max)
+            x_min = max(linedef.vertex1.x, x_min)
+            x_max = min(linedef.vertex2.x, x_max)
+            y_min = max(linedef.vertex1.y, y_min)
+            y_max = min(linedef.vertex2.y, y_max)
                 
         return Vector2((x_max - x_min) / 2 + x_min, (y_max - y_min) / 2 + y_min)
     
@@ -710,7 +668,7 @@ class MapData(object):
         plane = self.sector_extra[sector_index].floor_plane
         if plane is None:
             sector = self.sectors[sector_index]
-            return sector[SECTOR_FLOORZ]
+            return sector.floorz
         else:
             return plane.get_z(x, y)
         
@@ -725,7 +683,7 @@ class MapData(object):
         plane = self.sector_extra[sector_index].ceil_plane
         if plane is None:
             sector = self.sectors[sector_index]
-            return sector[SECTOR_CEILZ]
+            return sector.ceilz
         else:
             return plane.get_z(x, y)
     
@@ -736,9 +694,7 @@ class MapData(object):
         """
         
         subsector_index = self.point_in_subsector(x, y)
-        sector_index = self.subsector_sectors[subsector_index]
-        
-        return sector_index 
+        return self.subsector_sectors[subsector_index]
         
         
     def get_sector_floor_z(self, sector_index, x, y):
@@ -749,7 +705,7 @@ class MapData(object):
         plane = self.sector_extra[sector_index].floor_plane
       
         if plane is None:
-            return self.sectors[sector_index][SECTOR_FLOORZ]
+            return self.sectors[sector_index].floorz
         else:
             return plane.get_z(x, y)
     
@@ -762,7 +718,7 @@ class MapData(object):
         plane = self.sector_extra[sector_index].ceil_plane
       
         if plane is None:
-            return self.sectors[sector_index][SECTOR_CEILZ]
+            return self.sectors[sector_index].ceilz
         else:
             return plane.get_z(x, y)
     
@@ -777,8 +733,8 @@ class MapData(object):
         
         # Hexen style teleporters can have a TID target and a sector tag.
         if self.is_hexen == True:
-            dest_tid = linedef[LINEDEF_HEXEN_ARG0]
-            dest_tag = linedef[LINEDEF_HEXEN_ARG1]
+            dest_tid = linedef.args[0]
+            dest_tag = linedef.args[1]
             if dest_tag <= 0:
                 dest_tag = None
             
@@ -786,7 +742,7 @@ class MapData(object):
         
         # Doom style teleporters teleport to a fixed thing type in a tagged sector.
         else:
-            dest_tag = linedef[LINEDEF_DOOM_TAG]
+            dest_tag = linedef.tag
             target_thing = self.get_thingtype_in_sector(dest_tag, self.config.teleport_thing_type) 
         
         return target_thing
@@ -802,12 +758,12 @@ class MapData(object):
         """
         
         for thing in self.things:
-            if thing[THING_HEXEN_ID] != tid:
+            if thing.tid != tid:
                 continue
 
             if sector_tag is not None:
-                thing_sector_index = self.get_sector(thing[self.THING_X], thing[self.THING_Y])
-                if self.sectors[thing_sector_index][SECTOR_TAG] == sector_tag:
+                thing_sector_index = self.get_sector(thing.x, thing.y)
+                if self.sectors[thing_sector_index].tag == sector_tag:
                     return thing
             else:
                 return thing
@@ -825,11 +781,11 @@ class MapData(object):
         """
         
         for thing in self.things:
-            if thing[self.THING_TYPE] != thing_type:
+            if thing.doomid != thing_type:
                 continue
 
-            thing_sector_index = self.get_sector(thing[self.THING_X], thing[self.THING_Y])
-            if self.sectors[thing_sector_index][SECTOR_TAG] == sector_tag:
+            thing_sector_index = self.get_sector(thing.x, thing.y)
+            if self.sectors[thing_sector_index].tag == sector_tag:
                 return thing
         
         return None
@@ -845,10 +801,10 @@ class MapData(object):
         
         dest_line = None
         if self.is_hexen == True:
-            dest_id = linedef[LINEDEF_HEXEN_ARG1]
+            dest_id = linedef.args[1]
             dest_line = self.linedef_ids.get(dest_id)
         else:
-            dest_tag = linedef[LINEDEF_DOOM_TAG]
+            dest_tag = linedef.tag
             dest_line = self.get_linedef_by_tag(dest_tag)
             
         return dest_line 
@@ -860,7 +816,7 @@ class MapData(object):
         """
         
         for linedef in self.linedefs:
-            if linedef[LINEDEF_DOOM_TAG] == tag:
+            if linedef.tag == tag:
                 return linedef
             
         return None
@@ -872,43 +828,43 @@ class MapData(object):
         """
         
         linedef = self.linedefs[line_index]
-        vertex1 = self.vertices[linedef[LINEDEF_VERTEX_1]]
-        vertex2 = self.vertices[linedef[LINEDEF_VERTEX_2]]
-        
-        x1 = vertex1[VERTEX_X]
-        y1 = vertex1[VERTEX_Y]
-        x2 = vertex2[VERTEX_X]
-        y2 = vertex2[VERTEX_Y]
-        
+        x1 = linedef.vertex1.x
+        y1 = linedef.vertex1.y
+        x2 = linedef.vertex2.x
+        y2 = linedef.vertex2.y
+                    
         return Vector2(int(x1 + (x2 - x1) / 2), int(y1 + (y2 - y1) / 2))
 
 
     def point_on_node_side(self, x, y, node):
-        if node[NODE_DELTA_X] == 0:
-            if x <= node[NODE_X]:
-                return node[NODE_DELTA_Y] > 0
+        if node.delta_x == 0:
+            if x <= node.x:
+                return node.delta_y > 0
             else:
-                return node[NODE_DELTA_Y] < 0
+                return node.delta_y < 0
             
-        elif node[NODE_DELTA_Y] == 0:
-            if y <= node[NODE_Y]:
-                return node[NODE_DELTA_X] < 0
+        elif node.delta_y == 0:
+            if y <= node.y:
+                return node.delta_x < 0
             else:
-                return node[NODE_DELTA_X] > 0
+                return node.delta_x > 0
     
-        x -= node[NODE_X]
-        y -= node[NODE_Y]
+        x -= node.x
+        y -= node.y
     
-        if (node[NODE_DELTA_Y] ^ node[NODE_DELTA_X] ^ x ^ y) < 0:
-            return (node[NODE_DELTA_Y] ^ x) < 0
+        if (node.delta_y ^ node.delta_x ^ x ^ y) < 0:
+            return (node.delta_y ^ x) < 0
         
-        return y * node[NODE_DELTA_X] >= node[NODE_DELTA_Y] * x
+        return y * node.delta_x >= node.delta_y * x
     
     
     def point_in_subsector(self, x, y):
         node_index = len(self.nodes) - 1
     
-        while (node_index & NODE_FLAG_SUBSECTOR) == 0:
-            node_index = self.nodes[node_index][NODE_CHILD_RIGHT + self.point_on_node_side(x, y, self.nodes[node_index])]
+        while (node_index & Node.FLAG_SUBSECTOR) == 0:
+            if self.point_on_node_side(x, y, self.nodes[node_index]) == 0:
+                node_index = self.nodes[node_index].child_right
+            else:
+                node_index = self.nodes[node_index].child_left
     
-        return node_index & ~NODE_FLAG_SUBSECTOR
+        return node_index & ~Node.FLAG_SUBSECTOR

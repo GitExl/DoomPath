@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #coding=utf8
 
-from doom.mapenum import *
 from util.vector import Vector3, vector_substract, vector_crossproduct, vector_dotproduct
 
 
@@ -51,14 +50,11 @@ def plane_setup(map_data, refsector_index, refsector_lines, refline, floor):
     
     @return: a Plane object or None if no plane could be generated.
     """    
-    
-    vertex1 = map_data.vertices[refline[LINEDEF_VERTEX_1]]
-    vertex2 = map_data.vertices[refline[LINEDEF_VERTEX_2]]
-    
-    refv1x = vertex1[VERTEX_X]
-    refv1y = vertex1[VERTEX_Y]
-    refdx = vertex2[VERTEX_X] - refv1x
-    refdy = vertex2[VERTEX_Y] - refv1y
+
+    refv1x = refline.vertex1.x
+    refv1y = refline.vertex1.y
+    refdx = refline.vertex2.x - refv1x
+    refdy = refline.vertex2.y - refv1y
     
     farthest_vertex_index = -1
     farthest_distance = 0.0
@@ -66,56 +62,53 @@ def plane_setup(map_data, refsector_index, refsector_lines, refline, floor):
     # Find the vertex comprising the sector that is farthest from the
     # slope's reference line.
     for line in refsector_lines:
-        line_vertex1 = map_data.vertices[line[LINEDEF_VERTEX_1]]
-        line_vertex2 = map_data.vertices[line[LINEDEF_VERTEX_2]]
+        line_vertex1 = line.vertex1
+        line_vertex2 = line.vertex2
         
         # Calculate distance from vertex 1 of this line.
-        dist = abs((refv1y - line_vertex1[VERTEX_Y]) * refdx - (refv1x - line_vertex1[VERTEX_X]) * refdy)
+        dist = abs((refv1y - line_vertex1.y) * refdx - (refv1x - line_vertex1.x) * refdy)
         if dist > farthest_distance:
             farthest_distance = dist
-            farthest_vertex_index = line[LINEDEF_VERTEX_1]
+            farthest_vertex_index = line.vertex1
     
         # Calculate distance from vertex 2 of this line.
-        dist = abs((refv1y - line_vertex2[VERTEX_Y]) * refdx - (refv1x - line_vertex2[VERTEX_X]) * refdy)
+        dist = abs((refv1y - line_vertex2.y) * refdx - (refv1x - line_vertex2.x) * refdy)
         if dist > farthest_distance:
             farthest_distance = dist
-            farthest_vertex_index = line[LINEDEF_VERTEX_2]
+            farthest_vertex_index = line.vertex2
     
     if farthest_distance <= 0.0:
         return None
-    
     farthest_vertex = map_data.vertices[farthest_vertex_index]
 
     # Determine which sector to align.
-    front = map_data.sidedefs[refline[map_data.LINEDEF_SIDEDEF_FRONT]][SIDEDEF_SECTOR]
-    back = map_data.sidedefs[refline[map_data.LINEDEF_SIDEDEF_BACK]][SIDEDEF_SECTOR]
-    if refsector_index == front:
-        align_sector_index = back
+    front = map_data.sidedefs[refline.sidedef_front].sector
+    back = map_data.sidedefs[refline.sidedef_back].sector
+    if map_data.sectors[refsector_index] == front:
+        align_sector = back
     else:
-        align_sector_index = front
-        
+        align_sector = front
     refsector = map_data.sectors[refsector_index]
-    align_sector = map_data.sectors[align_sector_index]
     
     # Now we have three points, which can define a plane.
     # The two vertices making up refline and farthest_vertex.
     if floor == True:
-        z1 = align_sector[SECTOR_FLOORZ]
+        z1 = align_sector.floorz
     else:
-        z1 = align_sector[SECTOR_CEILZ]
+        z1 = align_sector.ceilz
     
     if floor == True:
-        z2 = refsector[SECTOR_FLOORZ]
+        z2 = refsector.floorz
     else:
-        z2 = refsector[SECTOR_CEILZ]
+        z2 = refsector.ceilz
     
     # Bail if the plane is perfectly level.
     if z1 == z2:
         return None
 
-    p1 = Vector3(vertex1[VERTEX_X], vertex1[VERTEX_Y], z1)
-    p2 = Vector3(vertex2[VERTEX_X], vertex2[VERTEX_Y], z1)
-    p3 = Vector3(farthest_vertex[VERTEX_X], farthest_vertex[VERTEX_Y], z2)
+    p1 = Vector3(refline.vertex1.x, refline.vertex1.y, z1)
+    p2 = Vector3(refline.vertex2.x, refline.vertex1.y, z1)
+    p3 = Vector3(farthest_vertex.x, farthest_vertex.y, z2)
 
     # Define the plane by drawing two vectors originating from
     # point p2: the vector from p2 to p1 and from p2 to p3.

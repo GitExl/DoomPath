@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #coding=utf8
 
-from doom.mapenum import *
 from util.vector import Vector2
 import struct
 
@@ -123,10 +122,10 @@ class BlockMap(object):
         """
         
         for index, line in enumerate(map_data.linedefs):
-            x1 = map_data.vertices[line[LINEDEF_VERTEX_1]][VERTEX_X]
-            y1 = map_data.vertices[line[LINEDEF_VERTEX_1]][VERTEX_Y]
-            x2 = map_data.vertices[line[LINEDEF_VERTEX_2]][VERTEX_X]
-            y2 = map_data.vertices[line[LINEDEF_VERTEX_2]][VERTEX_Y]
+            x1 = line.vertex1.x
+            y1 = line.vertex1.y
+            x2 = line.vertex2.x
+            y2 = line.vertex2.y
             
             dx = x2 - x1
             dy = y2 - y1
@@ -256,22 +255,22 @@ class BlockMap(object):
         """ 
         
         for index, thing in enumerate(map_data.things):
-            thing_type = thing[map_data.THING_TYPE]
+            thing_type = thing.doomid
             thing_def = map_data.config.thing_dimensions.get(thing_type)
             if thing_def is None:
                     continue                
                 
             # Get bridge thing radius from Hexen parameters.
             if map_data.config.bridge_custom_type is not None and thing_type == map_data.config.bridge_custom_type:
-                radius = thing[THING_HEXEN_ARG0]
+                radius = thing.args[0]
             
             # Use configuration radius
             else:
                 radius = thing_def.radius 
 
             # Convert map bounding box to blockmap bounding box.
-            p1 = Vector2(thing[map_data.THING_X] - radius, thing[map_data.THING_Y] - radius)
-            p2 = Vector2(thing[map_data.THING_X] + radius, thing[map_data.THING_Y] + radius)
+            p1 = Vector2(thing.x - radius, thing.y - radius)
+            p2 = Vector2(thing.x + radius, thing.y + radius)
             x1, y1 = self.map_to_blockmap(p1)
             x2, y2 = self.map_to_blockmap(p2)
             

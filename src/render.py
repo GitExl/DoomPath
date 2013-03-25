@@ -1,4 +1,4 @@
-from doom.mapenum import *
+from doom.mapobjects import Linedef
 from nav import navconnection
 from nav.navenum import DIRECTION_RANGE, DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT
 from util import rectangle
@@ -138,27 +138,24 @@ def render_things(map_data, surface, camera):
 def render_linedefs(map_data, surface, camera, sector_mark):
     color = None
     for linedef in map_data.linedefs:
-        front = linedef[map_data.LINEDEF_SIDEDEF_FRONT]
-        back = linedef[map_data.LINEDEF_SIDEDEF_BACK]
+        front = linedef.sidedef_front
+        back = linedef.sidedef_back
         
         sector = -1
-        if front != SIDEDEF_NONE:
-            sector = map_data.sidedefs[front][SIDEDEF_SECTOR]
-        if sector != sector_mark and back != SIDEDEF_NONE:
-            sector = map_data.sidedefs[back][SIDEDEF_SECTOR]
+        if front != Linedef.SIDEDEF_NONE:
+            sector = map_data.sidedefs[front].sector
+        if sector != sector_mark and back != Linedef.SIDEDEF_NONE:
+            sector = map_data.sidedefs[back].sector
         
         if sector == sector_mark:
             color = COLOR_LINEDEF_HIGHLIGHT
-        elif (linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_TWOSIDED) == 0 or (linedef[LINEDEF_FLAGS] & LINEDEF_FLAG_IMPASSIBLE) != 0:
+        elif (linedef.flags & Linedef.FLAG_TWOSIDED) == 0 or (linedef.flags & Linedef.FLAG_IMPASSIBLE) != 0:
             color = COLOR_LINEDEF_IMPASSIBLE
         else:
             color = COLOR_LINEDEF_2SIDED
             
-        vertex1 = map_data.vertices[linedef[LINEDEF_VERTEX_1]]
-        vertex2 = map_data.vertices[linedef[LINEDEF_VERTEX_2]]
-        
-        pos1 = camera.map_to_screen(vertex1[VERTEX_X], vertex1[VERTEX_Y])
-        pos2 = camera.map_to_screen(vertex2[VERTEX_X], vertex2[VERTEX_Y])
+        pos1 = camera.map_to_screen(linedef.vertex1.x, linedef.vertex1.y)
+        pos2 = camera.map_to_screen(linedef.vertex2.x, linedef.vertex2.y)
         
         pygame.draw.line(surface, color, pos1, pos2, 1)
     

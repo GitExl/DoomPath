@@ -1,5 +1,4 @@
 from doom.mapdata import Teleporter
-from doom.mapenum import *
 from nav.navelement import NavElement
 from nav.navenum import *
 from nav.walker import Walker
@@ -95,8 +94,8 @@ class NavGrid(object):
         # Add the initial things as initial elements to the nav grid.
         for thing in start_things:
             pos = Vector3()
-            pos.x = thing[self.map_data.THING_X] 
-            pos.y = thing[self.map_data.THING_Y]
+            pos.x = thing.x
+            pos.y = thing.y
             pos.z = self.map_data.get_floor_z(pos.x, pos.y)
             
             collision, _ = self.walker.check_position(pos, self.config.player_radius, self.config.player_height)
