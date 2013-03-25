@@ -47,9 +47,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/doom.wad'
-        source_map = 'E1M1'
-        dest_mesh = 'test/doom_e1m1.dpm'
+        source_wad = 'test/test.wad'
+        source_map = 'MAP01'
+        dest_mesh = 'test/test_map01.dpm'
         resolution = 1
         configuration = None
         max_area_size = 256

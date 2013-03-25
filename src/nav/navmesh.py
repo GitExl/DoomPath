@@ -84,7 +84,7 @@ class NavMesh(object):
         block = self.map_data.blockmap.get(block_pos)
         if block is None:
             return None
-        
+
         for index in block.areas:
             area = self.areas[index]
             if area.rect.is_point_inside(pos) == True:
@@ -96,6 +96,11 @@ class NavMesh(object):
     def get_areas_intersecting(self, rect):
         p1 = self.map_data.blockmap.map_to_blockmap(rect.p1)
         p2 = self.map_data.blockmap.map_to_blockmap(rect.p2)
+
+        if p1.x > p2.x:
+            p1.x, p2.x = p2.x, p1.x
+        if p1.y > p2.y:
+            p1.y, p2.y = p2.y, p1.y
         
         area_indices = set()
         for y in range(p1.y, p2.y + 1):
@@ -118,9 +123,12 @@ class NavMesh(object):
         """
         
         count = 0
+        rect = Rectangle()
+        
         for teleporter in self.map_data.teleporters:
             target_area = None
             
+            # Get the area that the teleporter target is in.
             if teleporter.kind == Teleporter.TELEPORTER_THING:
                 target_area = self.get_area_at(teleporter.dest)
             if teleporter.kind == Teleporter.TELEPORTER_LINE:
@@ -135,21 +143,15 @@ class NavMesh(object):
             # Create the teleport connection line from the linedef vertices.
             linedef = self.map_data.linedefs[teleporter.source_line]
             vertex1 = self.map_data.vertices[linedef[LINEDEF_VERTEX_1]]
-            vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]
-            
-            x1 = vertex1[VERTEX_X]
-            y1 = vertex1[VERTEX_Y]
-            x2 = vertex2[VERTEX_X]
-            y2 = vertex2[VERTEX_Y]
-            if x1 > x2:
-                x1, x2 = x2, x1
-            if y1 > y2:
-                y1, y2 = y2, y1
-                
-            rect = Rectangle(x1, y1, x2, y2)
+            vertex2 = self.map_data.vertices[linedef[LINEDEF_VERTEX_2]]            
+            rect.set(
+                vertex1[VERTEX_X],
+                vertex1[VERTEX_Y],
+                vertex2[VERTEX_X],
+                vertex2[VERTEX_Y]
+            )
 
             # Place a teleporter connection in all intersecting source areas.
-            count += 1
             areas = self.get_areas_intersecting(rect)
             for area in areas:
                 connection = NavConnection()
@@ -160,6 +162,8 @@ class NavMesh(object):
                 connection.flags = navconnection.CONNECTION_FLAG_AB | navconnection.CONNECTION_FLAG_TELEPORTER
                 
                 area.connections.append(connection)
+            
+            count += 1
         
         print 'Connected {} teleporters.'.format(count)
                 
@@ -352,33 +356,36 @@ class NavMesh(object):
             if x1 != merge_x1 or y1 != merge_y1 or x2 != merge_x2 or y2 != merge_y2:
                 continue
             
+            rect = area.rect
+            merge_rect = merge_area.rect
+            
             # Get the size of the new merged area.
             if side == SIDE_TOP:
-                width = area.rect.get_width()
-                height = area.rect.bottom - merge_area.rect.top 
+                width = rect.get_width()
+                height = rect.bottom - merge_rect.top 
             elif side == SIDE_RIGHT:
-                width = merge_area.rect.right - area.rect.left
-                height = area.rect.get_height()
+                width = merge_rect.right - rect.left
+                height = rect.get_height()
             elif side == SIDE_BOTTOM:
-                width = area.rect.get_width()
-                height = merge_area.rect.bottom - area.rect.top
+                width = rect.get_width()
+                height = merge_rect.bottom - rect.top
             elif side == SIDE_LEFT:
-                width = area.rect.right - merge_area.rect.left
-                height = area.rect.get_height()
+                width = rect.right - merge_rect.left
+                height = rect.get_height()
                 
             # Abort merging if the area dimensions are not good.
             if width > self.max_area_size_merged or height > self.max_area_size_merged:
                 continue
             
-            # Merge the area surface.
+            # Merge the area rectangle.
             if side == SIDE_TOP:
-                merge_area.rect.bottom = area.rect.bottom
+                merge_rect.set(merge_rect.left, merge_rect.top, merge_rect.right, rect.bottom)
             elif side == SIDE_RIGHT:
-                merge_area.rect.left = area.rect.left
+                merge_rect.set(rect.left, merge_rect.top, merge_rect.right, merge_rect.bottom)
             elif side == SIDE_BOTTOM:
-                merge_area.rect.top = area.rect.top
+                merge_rect.set(merge_rect.left, rect.top, merge_rect.right, merge_rect.bottom)
             elif side == SIDE_LEFT:
-                merge_area.rect.right = area.rect.right
+                merge_rect.set(merge_rect.left, merge_rect.top, rect.right, merge_rect.bottom)
                 
             # Merge the area element lists.
             merge_area.elements.extend(area.elements)

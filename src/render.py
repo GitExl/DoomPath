@@ -1,6 +1,7 @@
 from doom.mapenum import *
 from nav import navconnection
 from nav.navenum import DIRECTION_RANGE, DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT
+from util import rectangle
 import pygame
 
 
@@ -22,14 +23,19 @@ def render_connections(nav_mesh, surface, camera, mouse_pos):
     TELEPORT_SIZE = 6    
     
     connections = set()
+    c_rect = rectangle.Rectangle()
     
     for area in nav_mesh.areas:
         for connection in area.connections:
             if (connection.flags & navconnection.CONNECTION_FLAG_TELEPORTER) != 0:
-                x1, y1 = camera.map_to_screen(connection.rect.left, connection.rect.top)
-                x2, y2 = camera.map_to_screen(connection.rect.right, connection.rect.bottom)
+                c_rect.copy_from(connection.rect)
+                c_rect.flip_if_reversed()
                 
-                if mouse_pos.x >= connection.rect.left - TELEPORT_SIZE and mouse_pos.y >= connection.rect.top - TELEPORT_SIZE and mouse_pos.x <= connection.rect.right + TELEPORT_SIZE and mouse_pos.y <= connection.rect.bottom + TELEPORT_SIZE:
+                x1, y1 = camera.map_to_screen(c_rect.left, c_rect.top)
+                x2, y2 = camera.map_to_screen(c_rect.right, c_rect.bottom)
+                
+                if mouse_pos.x >= c_rect.left - TELEPORT_SIZE and mouse_pos.y >= c_rect.top - TELEPORT_SIZE and \
+                  mouse_pos.x <= c_rect.right + TELEPORT_SIZE and mouse_pos.y <= c_rect.bottom + TELEPORT_SIZE:
                     color = COLOR_ACTIVE
                     connections.add(connection)
                     active = True
@@ -94,12 +100,13 @@ def render_blockmap(map_data, surface, camera, mouse_pos):
     # Draw blockmap.
     for cx in range(0, map_data.blockmap.size.x):
         for cy in range(0, map_data.blockmap.size.y):
+            
             bx = int(cx * map_data.blockmap.blocksize + map_data.blockmap.origin.x)
             by = int(cy * map_data.blockmap.blocksize + map_data.blockmap.origin.y)
             pos1 = camera.map_to_screen(bx, by)
             pos2 = (int(map_data.blockmap.blocksize * camera.zoom), int(map_data.blockmap.blocksize * camera.zoom))
             rect = pygame.Rect(pos1, pos2)
-            
+
             if cx >= x1 and cx < x2 and cy >= y1 and cy < y2:
                 color = COLOR_BLOCKMAP_HIGHLIGHT
             else:

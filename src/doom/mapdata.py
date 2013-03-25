@@ -888,4 +888,4 @@ class MapData(object):
         x2 = vertex2[VERTEX_X]
         y2 = vertex2[VERTEX_Y]
         
-        return Vector2(x1 + int((x2 - x1) / 2), y1 + int((y2 - y1) / 2))
+        return Vector2(int(x1 + (x2 - x1) / 2), int(y1 + (y2 - y1) / 2))

@@ -29,17 +29,7 @@ def box_intersects_line(rect, x1, y1, x2, y2):
     """
     Cohen-Sutherland based line-AABB clipping algorithm.
     """
-    
-    if x1 > x2:
-        x1, x2 = x2, x1
-    if y1 > y2:
-        y1, y2 = y2, y1
-        
-    if rect.left > rect.right:
-        rect.left, rect.right = rect.right, rect.left
-    if rect.top > rect.bottom:
-        rect.top, rect.bottom = rect.bottom, rect.top
-        
+
     outcode1 = 0
     if x1 > rect.right:
         outcode1 = CLIP_RIGHT

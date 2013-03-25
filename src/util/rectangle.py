@@ -22,12 +22,23 @@ class Rectangle(object):
     
     
     def intersects_with(self, rect):
-        return not (self.left > rect.right or rect.right < self.left or rect.top > self.bottom or rect.bottom < self.top)
+        return not (rect.left > self.right or rect.right < self.left or rect.top > self.bottom or rect.bottom < self.top)
 
     
     def is_point_inside(self, pos):
         return (pos.x >= self.left and pos.x <= self.right and pos.y >= self.top and pos.y <= self.bottom)
-    
+
+
+    def flip_if_reversed(self):
+        if self.left > self.right:
+            self.left, self.right = self.right, self.left
+        
+        if self.top > self.bottom:
+            self.top, self.bottom = self.bottom, self.top
+            
+        self.p1.set(self.left, self.top)
+        self.p2.set(self.right, self.bottom)
+
     
     def set(self, left, top, right, bottom):
         self.p1.set(left, top)
