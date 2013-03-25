@@ -1,7 +1,6 @@
 from doom.mapdata import Teleporter
 from doom.mapenum import LINEDEF_VERTEX_1, LINEDEF_VERTEX_2, VERTEX_X, VERTEX_Y
 from doom.plane import Plane
-from doom.trig import box_intersects_line
 from nav import navconnection
 from nav.navarea import NavArea
 from nav.navconnection import NavConnection
@@ -111,7 +110,7 @@ class NavMesh(object):
         areas = []
         for index in area_indices:
             area = self.areas[index]
-            if box_intersects_line(area.rect, rect.left, rect.top, rect.right, rect.bottom) == True:
+            if area.rect.intersects_with_line(rect.left, rect.top, rect.right, rect.bottom) == True:
                 areas.append(area)
 
         return areas

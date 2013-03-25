@@ -69,6 +69,71 @@ class Rectangle(object):
         self.top = other.top
         self.right = other.right
         self.bottom = other.bottom
+    
+
+    def intersects_with_line(self, x1, y1, x2, y2):
+        """
+        Cohen-Sutherland based line-AABB clipping algorithm.
+        """
+        
+        CLIP_RIGHT = 1
+        CLIP_LEFT = 2
+        CLIP_TOP = 4
+        CLIP_BOTTOM = 8
+    
+        outcode1 = 0
+        if x1 > self.right:
+            outcode1 = CLIP_RIGHT
+        elif x1 < self.left:
+            outcode1 = CLIP_LEFT
+        if y1 > self.bottom:
+            outcode1 |= CLIP_TOP
+        elif y1 < self.top:
+            outcode1 |= CLIP_BOTTOM
+        if outcode1 == 0:
+            return True
+    
+        outcode2 = 0
+        if x2 > self.right:
+            outcode2 = CLIP_RIGHT
+        elif x2 < self.left:
+            outcode2 = CLIP_LEFT
+        if y2 > self.bottom:
+            outcode2 |= CLIP_TOP
+        elif y2 < self.top:
+            outcode2 |= CLIP_BOTTOM
+    
+        if outcode2 == 0:
+            return True
+    
+        if (outcode1 & outcode2) > 0:
+            return False
+    
+        if (outcode1 & (CLIP_RIGHT | CLIP_LEFT)):
+            if (outcode1 & CLIP_RIGHT):
+                interceptx = self.right
+            else:
+                interceptx = self.left
+            
+            ax1 = x2 - x1
+            ax2 = interceptx - x1
+            intercepty = y1 + ax2 * (y2 - y1) / ax1
+            if intercepty <= self.bottom and intercepty >= self.top:
+                return True
+    
+        if (outcode1 & (CLIP_TOP | CLIP_BOTTOM)):
+            if (outcode1 & CLIP_TOP):
+                intercepty = self.bottom
+            else:
+                intercepty = self.top
+            
+            ay1 = y2 - y1
+            ay2 = intercepty - y1
+            interceptx = x1 + ay2 * (x2 - x1) / ay1
+            if interceptx <= self.right and interceptx >= self.left:
+                return True
+    
+        return False
         
         
     def __eq__(self, other):

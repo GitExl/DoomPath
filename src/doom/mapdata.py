@@ -4,8 +4,7 @@
 from ctypes import create_string_buffer
 from doom import blockmap
 from doom.mapenum import *
-from doom.trig import point_in_subsector
-from lib import mapdata_create, mapdata_put_nodes
+
 from plane import plane_setup
 from util.vector import Vector2, Vector3
 import struct
@@ -103,8 +102,6 @@ class MapData(object):
         self.sector_extra = None
         self.linedef_ids = None
         self.teleporters = None
-
-        self.nodes_data = None
         
         # If True, this map is stored in Hexen format, Doom format otherwise.
         self.is_hexen = False
@@ -166,11 +163,6 @@ class MapData(object):
         self.nodes, self.nodes_data = self.read_datalump(wad_file, headerindex + 7, NODE_DATA)
         self.sectors, self.sectors_data = self.read_datalump(wad_file, headerindex + 8, SECTOR_DATA)
                 
-        # Create native map data buffers.
-        self.c_mapdata = mapdata_create()
-        nodes_buffer = create_string_buffer(self.nodes_data, len(self.nodes_data))
-        mapdata_put_nodes(self.c_mapdata, len(self.nodes), nodes_buffer)
-        
         
     def setup(self, config):
         """
@@ -743,7 +735,7 @@ class MapData(object):
         Returns the sector index at map coordinates x,y.
         """
         
-        subsector_index = point_in_subsector(self.c_mapdata, x, y)
+        subsector_index = self.point_in_subsector(x, y)
         sector_index = self.subsector_sectors[subsector_index]
         
         return sector_index 
@@ -889,3 +881,34 @@ class MapData(object):
         y2 = vertex2[VERTEX_Y]
         
         return Vector2(int(x1 + (x2 - x1) / 2), int(y1 + (y2 - y1) / 2))
+
+
+    def point_on_node_side(self, x, y, node):
+        if node[NODE_DELTA_X] == 0:
+            if x <= node[NODE_X]:
+                return node[NODE_DELTA_Y] > 0
+            else:
+                return node[NODE_DELTA_Y] < 0
+            
+        elif node[NODE_DELTA_Y] == 0:
+            if y <= node[NODE_Y]:
+                return node[NODE_DELTA_X] < 0
+            else:
+                return node[NODE_DELTA_X] > 0
+    
+        x -= node[NODE_X]
+        y -= node[NODE_Y]
+    
+        if (node[NODE_DELTA_Y] ^ node[NODE_DELTA_X] ^ x ^ y) < 0:
+            return (node[NODE_DELTA_Y] ^ x) < 0
+        
+        return y * node[NODE_DELTA_X] >= node[NODE_DELTA_Y] * x
+    
+    
+    def point_in_subsector(self, x, y):
+        node_index = len(self.nodes) - 1
+    
+        while (node_index & NODE_FLAG_SUBSECTOR) == 0:
+            node_index = self.nodes[node_index][NODE_CHILD_RIGHT + self.point_on_node_side(x, y, self.nodes[node_index])]
+    
+        return node_index & ~NODE_FLAG_SUBSECTOR

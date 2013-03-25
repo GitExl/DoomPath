@@ -1,5 +1,4 @@
 from doom.mapenum import *
-from doom.trig import point_in_subsector, box_intersects_line
 from util.rectangle import Rectangle
 from util.vector import Vector3
 import config
@@ -82,7 +81,7 @@ class Walker(object):
         state = self.state
         state.reset(pos, radius, height)
                 
-        subsector_index = point_in_subsector(self.map_data.c_mapdata, pos.x, pos.y)
+        subsector_index = self.map_data.point_in_subsector(pos.x, pos.y)
         state.sector_index = self.map_data.subsector_sectors[subsector_index]
         state.base_sector_index = state.sector_index
             
@@ -130,7 +129,7 @@ class Walker(object):
             ly2 = vertex2[VERTEX_Y] 
             
             # Ignore lines that do not intersect.                   
-            if box_intersects_line(state.bbox, lx1, ly1, lx2, ly2) == False:
+            if state.bbox.intersects_with_line(lx1, ly1, lx2, ly2) == False:
                 continue
             
             # Cannot pass through impassible flagged lines.
