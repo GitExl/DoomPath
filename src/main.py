@@ -246,7 +246,7 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    cProfile.run('loop.loop_init()', sort=1)
-    #if loop.loop_init() == False:
-    #    sys.exit()
+    #cProfile.run('loop.loop_init()', sort=1)
+    if loop.loop_init() == False:
+        sys.exit()
     loop.loop_start()

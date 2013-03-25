@@ -5,6 +5,7 @@ from util.vector import Vector2
 
 
 class Rectangle(object):   
+    __slots__ = ('p1', 'p2', 'left', 'top', 'right', 'bottom')
     
     def __init__(self, left=0, top=0, right=0, bottom=0):
         self.p1 = Vector2()
