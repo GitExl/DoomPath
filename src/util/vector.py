@@ -51,7 +51,9 @@ class Vector3(object):
     """
     
     def __init__(self, x=0, y=0, z=0):
-        self.set(x, y, z)
+        self.x = x
+        self.y = y
+        self.z = z
         
         
     def set(self, x, y, z):
@@ -102,7 +104,8 @@ class Vector3(object):
 class Vector2(object):
     
     def __init__(self, x=0, y=0):
-        self.set(x, y)
+        self.x = x
+        self.y = y
         
         
     def set(self, x, y):
@@ -125,7 +128,7 @@ class Vector2(object):
         Returns the length of this vector.
         """
         
-        return math.sqrt(self.x * self.x + self.y * self.y);
+        return math.sqrt(self.x * self.x + self.y * self.y)
     
     
     def scale(self, scale):

@@ -3,7 +3,7 @@ from doom.mapenum import *
 from nav.navelement import NavElement
 from nav.navenum import *
 from nav.walker import Walker
-from util.vector import Vector3, Vector2
+from util.vector import Vector3
 import struct
 
 
@@ -54,13 +54,14 @@ class NavGrid(object):
         self.element_hash = {}
         self.element_prune = set()
         
+        self.check_pos = Vector3()
+        
         
     def add_walkable_element(self, pos):
         element_pos = self.map_to_element(pos)
-        element_pos = Vector3(element_pos.x, element_pos.y, pos.z)
-        element = self.add_element(element_pos)
+        element = self.add_element_xyz(element_pos[0], element_pos[1], pos.z)
         
-        sector_index = self.map_data.get_sector(element_pos.x, element_pos.y)
+        sector_index = self.map_data.get_sector(element_pos[0], element_pos[1])
         self.set_element_extra(sector_index, element)
         
         sector_extra = self.map_data.sector_extra[sector_index]
@@ -70,15 +71,15 @@ class NavGrid(object):
         self.element_tasks.append(element)
         
     
-    def add_element(self, pos):
-        element = NavElement(pos.x, pos.y, pos.z)
+    def add_element_xyz(self, x, y, z):
+        element = NavElement(x, y, z)
 
-        element_hash = pos.x + (pos.y * self.width)
+        element_hash = x + (y * self.width)
         elements = self.element_hash.get(element_hash)
         if elements is None:
             elements = {}
             self.element_hash[element_hash] = elements
-        elements[pos.z] = element
+        elements[z] = element
         
         self.elements.append(element)
         
@@ -225,11 +226,11 @@ class NavGrid(object):
             elements[element.z] = element 
             
     
-    def get_element(self, pos):
-        element_hash = pos.x + (pos.y * self.width)
+    def get_element_xyz(self, x, y, z):
+        element_hash = x + (y * self.width)
         elements = self.element_hash.get(element_hash)
         if elements is not None:
-            return elements.get(pos.z)
+            return elements.get(z)
 
         return None
     
@@ -240,14 +241,14 @@ class NavGrid(object):
         
 
     def map_to_element(self, pos):
-        return Vector2((pos.x / self.element_size) + 1, (pos.y / self.element_size) + 1)
+        return ((pos.x / self.element_size) + 1, (pos.y / self.element_size) + 1)
     
     
     def element_to_map(self, pos):
-        return Vector2((pos.x * self.element_size) - (self.element_size / 2), (pos.y * self.element_size) - (self.element_size / 2))
+        return ((pos.x * self.element_size) - (self.element_size / 2), (pos.y * self.element_size) - (self.element_size / 2))
 
     
-    def create_walkable_elements(self, config):       
+    def create_walkable_elements(self, config):
         pos = Vector3()
         
         while 1:
@@ -255,7 +256,7 @@ class NavGrid(object):
                 break
             element = self.element_tasks.pop()
             
-            if len(self.elements) % 2500 == 0:
+            if len(self.elements) % 5000 == 0:
                 print '{} elements, {} tasks left...'.format(len(self.elements), len(self.element_tasks))
             
             for direction in DIRECTION_RANGE:
@@ -270,7 +271,7 @@ class NavGrid(object):
                     pos.x -= 1
                 
                 # See if an adjoining element already exists.
-                new_element = self.get_element(pos)
+                new_element = self.get_element_xyz(pos.x, pos.y, pos.z)
                 if new_element is None:
                     reason, new_element = self.test_element(pos, direction, element, new_element)
                     if reason != REASON_NONE:
@@ -278,17 +279,17 @@ class NavGrid(object):
                     
                 element.elements[direction] = new_element
 
-                
+        
     def test_element(self, pos, direction, element, new_element):
         # See if an adjoining element can be placed.
         map_pos = self.element_to_map(pos)
-        if map_pos.x < self.map_data.min_x or map_pos.x > self.map_data.max_x or map_pos.y < self.map_data.min_y or map_pos.y > self.map_data.max_y:
+        if map_pos[0] < self.map_data.min_x or map_pos[0] > self.map_data.max_x or map_pos[1] < self.map_data.min_y or map_pos[1] > self.map_data.max_y:
             print 'Grid leak at {}'.format(map_pos)
             return REASON_LEAK, None
         
-        check_pos = Vector3()
-        check_pos.x = map_pos.x
-        check_pos.y = map_pos.y
+        check_pos = self.check_pos
+        check_pos.x = map_pos[0]
+        check_pos.y = map_pos[1]
         check_pos.z = pos.z
         collision, state = self.walker.check_position(check_pos, self.element_size, self.element_height)
         
@@ -346,11 +347,10 @@ class NavGrid(object):
                               
         # See if an element exists in the updated location.
         new_pos = self.map_to_element(check_pos)
-        new_pos.z = check_pos.z
-        new_element = self.get_element(new_pos)
+        new_element = self.get_element_xyz(new_pos[0], new_pos[1], check_pos.z)
         
         if new_element is None:
-            new_element = self.add_element(new_pos)
+            new_element = self.add_element_xyz(new_pos[0], new_pos[1], check_pos.z)
             if state.special_sector is not None:
                 self.set_element_extra(state.special_sector, new_element)
                 

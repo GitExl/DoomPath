@@ -10,7 +10,13 @@ class Rectangle(object):
         self.p1 = Vector2()
         self.p2 = Vector2()
         
-        self.set(left, top, right, bottom)
+        self.p1.set(left, top)
+        self.p2.set(right, bottom)
+        
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
         
     
     def get_width(self):

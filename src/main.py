@@ -47,9 +47,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/test.wad'
-        source_map = 'MAP01'
-        dest_mesh = 'test/test_map01.dpm'
+        source_wad = 'test/dv.wad'
+        source_map = 'MAP05'
+        dest_mesh = 'test/dv_map05.dpm'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -246,7 +246,7 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    #cProfile.run('loop.loop_init()', sort=1)
-    if loop.loop_init() == False:
-        sys.exit()
+    cProfile.run('loop.loop_init()', sort=1)
+    #if loop.loop_init() == False:
+    #    sys.exit()
     loop.loop_start()

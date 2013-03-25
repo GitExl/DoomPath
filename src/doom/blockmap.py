@@ -46,6 +46,10 @@ class BlockMap(object):
     
     
     def get(self, pos):
+        return self.get_xy(pos.x, pos.y)
+    
+    
+    def get_xy(self, x, y):
         """
         Returns a single Block object from this blockmap.
         
@@ -54,12 +58,12 @@ class BlockMap(object):
         @return: a Block object or None if the block falls outside the blockmap coordinate range.
         """
           
-        if pos.x < 0 or pos.x >= self.size.x:
+        if x < 0 or x >= self.size.x:
             return None
-        if pos.y < 0 or pos.y >= self.size.y:
+        if y < 0 or y >= self.size.y:
             return None
         
-        return self.blocks[pos.x + pos.y * self.size.x]
+        return self.blocks[x + y * self.size.x]
     
     
     def get_region(self, rect):
@@ -98,7 +102,7 @@ class BlockMap(object):
         Returns map unit coordinates for the blockmap block at coordinate x, y.
         """
         
-        return Vector2(pos.x * self.blocksize + self.origin_x, pos.y * self.blocksize + self.origin_y)
+        return (pos.x * self.blocksize + self.origin_x, pos.y * self.blocksize + self.origin_y)
     
     
     def map_to_blockmap(self, pos):
@@ -106,7 +110,7 @@ class BlockMap(object):
         Returns blockmap coordinates for the map units x, y.
         """
         
-        return Vector2(int((pos.x - self.origin.x) / self.blocksize), int((pos.y - self.origin.y) / self.blocksize))
+        return (int((pos.x - self.origin.x) / self.blocksize), int((pos.y - self.origin.y) / self.blocksize))
     
 
     def generate_linedefs(self, map_data):
@@ -268,14 +272,14 @@ class BlockMap(object):
             # Convert map bounding box to blockmap bounding box.
             p1 = Vector2(thing[map_data.THING_X] - radius, thing[map_data.THING_Y] - radius)
             p2 = Vector2(thing[map_data.THING_X] + radius, thing[map_data.THING_Y] + radius)
-            p1 = self.map_to_blockmap(p1)
-            p2 = self.map_to_blockmap(p2)
+            x1, y1 = self.map_to_blockmap(p1)
+            x2, y2 = self.map_to_blockmap(p2)
             
             # Clip bounding box to blockmap dimensions.
-            left = max(0, p1.x)
-            top = max(0, p1.y)
-            right = min(self.size.x, p2.x)
-            bottom = min(self.size.y, p2.y)
+            left = max(0, x1)
+            top = max(0, y1)
+            right = min(self.size.x, x2)
+            bottom = min(self.size.y, y2)
             
             # Fill a box over the blockmap blocks that this thing occupies.
             for y in range(top, bottom + 1):
@@ -293,14 +297,14 @@ class BlockMap(object):
         
         for index, area in enumerate(nav_mesh.areas):
             # Convert map bounding box to blockmap bounding box.
-            p1 = self.map_to_blockmap(area.rect.p1)
-            p2 = self.map_to_blockmap(area.rect.p2)
+            x1, y1 = self.map_to_blockmap(area.rect.p1)
+            x2, y2 = self.map_to_blockmap(area.rect.p2)
             
             # Clip bounding box to blockmap dimensions.
-            left = max(0, p1.x)
-            top = max(0, p1.y)
-            right = min(self.size.x, p2.x)
-            bottom = min(self.size.y, p2.y)
+            left = max(0, x1)
+            top = max(0, y1)
+            right = min(self.size.x, x2)
+            bottom = min(self.size.y, y2)
             
             # Fill a box over the blockmap blocks that this thing occupies.
             for y in range(top, bottom + 1):

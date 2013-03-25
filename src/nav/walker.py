@@ -45,6 +45,8 @@ class Walker(object):
         self.config = config
         self.state = PositionState()
         
+        self.temp_rect = Rectangle()
+        
         
     def get_bb_floor_z(self, pos, radius, sector_index=None):
         if sector_index is not None:
@@ -86,9 +88,10 @@ class Walker(object):
             
         self.check_sector_position(state)
         
-        p1 = self.map_data.blockmap.map_to_blockmap(state.bbox.p1)
-        p2 = self.map_data.blockmap.map_to_blockmap(state.bbox.p2)
-        rect = Rectangle(p1.x, p1.y, p2.x, p2.y)
+        x1, y1 = self.map_data.blockmap.map_to_blockmap(state.bbox.p1)
+        x2, y2 = self.map_data.blockmap.map_to_blockmap(state.bbox.p2)
+        rect = self.temp_rect
+        rect.set(x1, y1, x2, y2)
         
         linedefs, things = self.map_data.blockmap.get_region(rect)
         if len(linedefs) > 0:
@@ -157,8 +160,6 @@ class Walker(object):
 
 
     def check_block_things(self, state, things):
-        rect = Rectangle()
-        
         for thing_index in things:
             thing = self.map_data.things[thing_index]
             thing_type = thing[self.map_data.THING_TYPE]
@@ -181,6 +182,7 @@ class Walker(object):
             thing_x = thing[self.map_data.THING_X]
             thing_y = thing[self.map_data.THING_Y]
 
+            rect = self.temp_rect
             rect.set(
                 thing_x - thing_radius,
                 thing_y - thing_radius,

@@ -80,8 +80,8 @@ class NavMesh(object):
 
 
     def get_area_at(self, pos):
-        block_pos = self.map_data.blockmap.map_to_blockmap(pos)
-        block = self.map_data.blockmap.get(block_pos)
+        x, y = self.map_data.blockmap.map_to_blockmap(pos)
+        block = self.map_data.blockmap.get_xy(x, y)
         if block is None:
             return None
 
@@ -94,18 +94,18 @@ class NavMesh(object):
     
     
     def get_areas_intersecting(self, rect):
-        p1 = self.map_data.blockmap.map_to_blockmap(rect.p1)
-        p2 = self.map_data.blockmap.map_to_blockmap(rect.p2)
+        x1, y1 = self.map_data.blockmap.map_to_blockmap(rect.p1)
+        x2, y2 = self.map_data.blockmap.map_to_blockmap(rect.p2)
 
-        if p1.x > p2.x:
-            p1.x, p2.x = p2.x, p1.x
-        if p1.y > p2.y:
-            p1.y, p2.y = p2.y, p1.y
+        if x1 > x2:
+            x1, x2 = x2, x1
+        if y1 > y2:
+            y1, y2 = y2, y1
         
         area_indices = set()
-        for y in range(p1.y, p2.y + 1):
-            for x in range(p1.x, p2.x + 1):
-                block = self.map_data.blockmap.get(Vector2(x, y))
+        for y in range(y1, y2 + 1):
+            for x in range(x1, x2 + 1):
+                block = self.map_data.blockmap.get_xy(x, y)
                 area_indices.update(block.areas)
         
         areas = []
@@ -174,21 +174,21 @@ class NavMesh(object):
         """
         
         for area in self.areas:
-            p1 = self.nav_grid.map_to_element(area.rect.p1)
-            p2 = self.nav_grid.map_to_element(area.rect.p2)
+            x1, y1 = self.nav_grid.map_to_element(area.rect.p1)
+            x2, y2 = self.nav_grid.map_to_element(area.rect.p2)
             
             # Shrink the area size by one element on each side.
             # Skip pruning elements in the area if the area is too small.
-            p1.x += 1
-            p2.x -= 1
-            if p1.x > p2.x:
+            x1 += 1
+            x2 -= 1
+            if x1 > x2:
                 continue
-            p1.y += 1
-            p2.y -= 1
-            if p1.y > p2.y:
+            y1 += 1
+            y2 -= 1
+            if y1 > y2:
                 continue
             
-            area.inside_rect.set(p1.x, p1.y, p2.x, p2.y)
+            area.inside_rect.set(x1, y1, x2, y2)
             area.elements = filter(self.area_element_prune_filter, area.elements)
             
         self.nav_grid.remove_pruned_elements()
@@ -255,15 +255,15 @@ class NavMesh(object):
             p2.x = max(element.pos.x, p2.x)
             p2.y = max(element.pos.y, p2.y)
         
-        p1 = self.nav_grid.element_to_map(p1)
-        p2 = self.nav_grid.element_to_map(p2)
+        x1, y1 = self.nav_grid.element_to_map(p1)
+        x2, y2 = self.nav_grid.element_to_map(p2)
         
-        p1.x -= self.nav_grid.element_size / 2
-        p1.y -= self.nav_grid.element_size / 2
-        p2.x += self.nav_grid.element_size / 2
-        p2.y += self.nav_grid.element_size / 2
+        x1 -= self.nav_grid.element_size / 2
+        y1 -= self.nav_grid.element_size / 2
+        x2 += self.nav_grid.element_size / 2
+        y2 += self.nav_grid.element_size / 2
         
-        return Rectangle(p1.x, p1.y, p2.x, p2.y)
+        return Rectangle(x1, y1, x2, y2)
     
     
     def area_element_prune_filter(self, element):
@@ -300,7 +300,7 @@ class NavMesh(object):
                     area.plane = element.plane
                     areas.append(area)
                     
-                    if len(areas) % int(250 / size) == 0:
+                    if len(areas) % int(1000 / size) == 0:
                         print '{} navigation areas.'.format(len(areas))
             
             x += 1
@@ -312,27 +312,29 @@ class NavMesh(object):
 
     
     def area_merge_filter(self, area):
+        pos = Vector2()
+        
         for side in SIDE_RANGE:
             x1, y1, x2, y2 = area.get_side(side)
             
             # Select a grid element on the current side.
             if side == SIDE_TOP:
-                pos = Vector2(x1 + 1, y1 + 1)
+                pos.set(x1 + 1, y1 + 1)
                 direction = DIRECTION_UP
             elif side == SIDE_RIGHT:
-                pos = Vector2(x2 - 1, y2 - 1)
+                pos.set(x2 - 1, y2 - 1)
                 direction = DIRECTION_RIGHT
             elif side == SIDE_BOTTOM:
-                pos = Vector2(x2 - 1, y2 - 1)
+                pos.set(x2 - 1, y2 - 1)
                 direction = DIRECTION_DOWN
             elif side == SIDE_LEFT:
-                pos = Vector2(x1 + 1, y1 + 1)
+                pos.set(x1 + 1, y1 + 1)
                 direction = DIRECTION_LEFT
-            epos = self.nav_grid.map_to_element(pos)
+            ex, ey = self.nav_grid.map_to_element(pos)
             
             # Find the element in this area.
             for element in area.elements:
-                if element.pos.x == epos.x and element.pos.y == epos.y:
+                if element.pos.x == ex and element.pos.y == ey:
                     break
             else:
                 continue
@@ -402,8 +404,10 @@ class NavMesh(object):
         area_rect.set_size(element.pos.x, element.pos.y, width, height)
         
         # Create a new nav area of the found width and height.
-        p1 = self.nav_grid.element_to_map(area_rect.p1)
-        p2 = self.nav_grid.element_to_map(area_rect.p2)
+        x1, y1 = self.nav_grid.element_to_map(area_rect.p1)
+        x2, y2 = self.nav_grid.element_to_map(area_rect.p2)
+        p1 = Vector2(x1, y1)
+        p2 = Vector2(x2, y2)
         
         # Offset to grid element center.
         p1.x -= (self.nav_grid.element_size / 2)
