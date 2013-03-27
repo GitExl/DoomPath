@@ -13,28 +13,6 @@ THREED_KIND_SWIMMABLE = 0x02
 THREED_KIND_NONSOLID = 0x04
 THREED_FLAG_IGNORE_BOTTOM = 0x08
 
-
-class SectorExtra(object):
-    """
-    Container for additional sector information.
-    """
-
-    THREEDFLOOR_SECTOR_BOTTOM = 0
-    THREEDFLOOR_SECTOR_TOP = 1
-    
-    
-    def __init__(self):
-        self.linedefs = []
-        self.ceil_plane = None
-        self.floor_plane = None
-        self.threedfloors = []
-        self.threedstack = []
-        
-        self.is_special = False
-        self.moves = False
-        self.ignore = False
-        self.damage = 0
-        
         
 class Teleporter(object):
     """
@@ -74,7 +52,6 @@ class MapData(object):
 
         # Additional map data, generated from raw data.
         self.subsector_sectors = None
-        self.sector_extra = None
         self.linedef_ids = None
         self.teleporters = None
         
@@ -248,11 +225,6 @@ class MapData(object):
         Processes additional sector data and generates extra structures for them.
         """
         
-        # Initialise sector extra data list.
-        self.sector_extra = []
-        for _ in self.sectors:
-            self.sector_extra.append(SectorExtra())            
-        
         # Build a list of subsector to sector mappings.
         # Each subsector's first segment is taken. This segment's linedef is taken, then the
         # sidedef on the segment's side is taken from the linedef. This sidedef contains the
@@ -274,7 +246,7 @@ class MapData(object):
             if linedef.sidedef_back != Linedef.SIDEDEF_NONE:
                 sidedef = self.sidedefs[linedef.sidedef_back]
             
-            self.sector_extra[sidedef.sector].linedefs.append(linedef)
+            self.sectors[sidedef.sector].linedefs.append(linedef)
         
         
     def setup_stairs(self):
@@ -310,12 +282,10 @@ class MapData(object):
                 # there is no more shared linedef or the floor texture is different. 
                 while True:
                     current_sector = self.sectors[current_sector_index]
-                    sector_extra = self.sector_extra[current_sector_index]
-                    sector_extra.moves = True
-                    sector_extra.is_special = True
+                    current_sector.flags |= Sector.FLAG_MOVES | Sector.FLAG_SPECIAL
                     
                     # Find next sector to mark as special.
-                    for sector_linedef in sector_extra.linedefs:
+                    for sector_linedef in current_sector.linedefs:
                         
                         # Ignore lindefs with only one side.
                         if (sector_linedef.flags & Linedef.FLAG_TWOSIDED) == 0:
@@ -351,8 +321,7 @@ class MapData(object):
         # Create lists of 3d floors in each sector.
         if self.config.threedfloor_special is not None:
             for linedef in self.linedefs:
-                action = linedef.action
-                if action == self.config.threedfloor_special:
+                if linedef.action == self.config.threedfloor_special:
                     sidedef = linedef.sidedef_front
                     if sidedef == Linedef.SIDEDEF_NONE:
                         continue
@@ -375,35 +344,35 @@ class MapData(object):
                         control_sector.ceilingz, control_sector.floorz = control_sector.floorz, control_sector.ceiling
                     
                     for sector_index in target_sectors:
-                        self.sector_extra[sector_index].threedfloors.append(control_sector_index)
+                        self.sectors[sector_index].threedfloors.append(control_sector_index)
                         
                     threed_count += 1
                 
         # Create sector_floor, sector_ceiling stacks. Even sectors without 3d floors get a single item on the stack.
-        for sector_index, sector_extra in enumerate(self.sector_extra):
-            if len(sector_extra.threedfloors) == 0:
+        for sector_index, sector in enumerate(self.sectors):
+            if len(sector.threedfloors) == 0:
                 data = (sector_index, sector_index)
-                sector_extra.threedstack.append(data)
+                sector.threedstack.append(data)
             
             else:
                 # Sort threed floors by their floor height at the center of the target sector.
                 center = self.get_sector_center(sector_index)
-                sector_extra.threedfloors = sorted(sector_extra.threedfloors, key=lambda threed: self.get_sector_ceil_z(threed, center.x, center.y))
+                sector.threedfloors = sorted(sector.threedfloors, key=lambda threed: self.get_sector_ceil_z(threed, center.x, center.y))
                 
                 # Create stack of 3d floor top and bottom sector indices.
-                sector_top = sector_extra.threedfloors[0]
+                sector_top = sector.threedfloors[0]
                 data = (sector_index, sector_top)
-                sector_extra.threedstack.append(data)
+                sector.threedstack.append(data)
 
                 sector_bottom = sector_top
-                for threed_index in range(len(sector_extra.threedfloors)):
-                    if threed_index == len(sector_extra.threedfloors) - 1:
+                for threed_index in range(len(sector.threedfloors)):
+                    if threed_index == len(sector.threedfloors) - 1:
                         sector_top = sector_index
                     else:
-                        sector_top = sector_extra.threedfloors[threed_index + 1]
+                        sector_top = sector.threedfloors[threed_index + 1]
                 
                     data = (sector_bottom, sector_top)
-                    sector_extra.threedstack.append(data)
+                    sector.threedstack.append(data)
                     
                     sector_bottom = sector_top
                             
@@ -479,22 +448,22 @@ class MapData(object):
                 
                 # Floor plane?
                 if align_floor == ALIGN_FRONT:
-                    plane = plane_setup(self, frontsector_index, self.sector_extra[frontsector_index].linedefs, line, True)
-                    self.sector_extra[frontsector_index].floor_plane = plane
+                    plane = plane_setup(self, frontsector_index, self.sectors[frontsector_index].linedefs, line, True)
+                    self.sectors[frontsector_index].floor_plane = plane
                     floor_slopes += 1
                 elif align_floor == ALIGN_BACK:
-                    plane = plane_setup(self, backsector_index, self.sector_extra[backsector_index].linedefs, line, True)
-                    self.sector_extra[backsector_index].floor_plane = plane
+                    plane = plane_setup(self, backsector_index, self.sectors[backsector_index].linedefs, line, True)
+                    self.sectors[backsector_index].floor_plane = plane
                     floor_slopes += 1
                     
                 # Ceiling plane?
                 if align_ceiling == ALIGN_FRONT:
-                    plane = plane_setup(self, frontsector_index, self.sector_extra[frontsector_index].linedefs, line, False)
-                    self.sector_extra[frontsector_index].ceil_plane = plane
+                    plane = plane_setup(self, frontsector_index, self.sectors[frontsector_index].linedefs, line, False)
+                    self.sectors[frontsector_index].ceiling_plane = plane
                     ceil_slopes += 1
                 elif align_ceiling == ALIGN_BACK:
-                    plane = plane_setup(self, backsector_index, self.sector_extra[backsector_index].linedefs, line, False)
-                    self.sector_extra[backsector_index].ceil_plane = plane
+                    plane = plane_setup(self, backsector_index, self.sectors[backsector_index].linedefs, line, False)
+                    self.sectors[backsector_index].ceiling_plane = plane
                     ceil_slopes += 1
         
         if floor_slopes > 0:
@@ -508,22 +477,22 @@ class MapData(object):
         Applies an effect string to sector extra data.
         """
         
-        sector_extra = self.sector_extra[sector_index]
+        sector = self.sectors[sector_index]
         
         if effect == 'damage5':
-            sector_extra.damage = 5
+            sector.damage = 5
         elif effect == 'damage10':
-            sector_extra.damage = 10
+            sector.damage = 10
         elif effect == 'damage20':
-            sector_extra.damage = 20
+            sector.damage = 20
         elif effect == 'ignore':
-            sector_extra.ignore = True
+            sector.flags |= Sector.FLAG_IGNORE
         elif effect == 'moves':
-            sector_extra.moves = True
+            sector.flags |= Sector.FLAG_MOVES
         else:
             print 'Unknown sector effect "{}"!'.format(effect)
             
-        sector_extra.is_special = True
+        sector.flags |= Sector.FLAG_SPECIAL
 
 
     def setup_lineids(self):
@@ -630,7 +599,7 @@ class MapData(object):
         x_max = 0x8000
         y_max = 0x8000
         
-        for linedef in self.sector_extra[sector_index].linedefs:
+        for linedef in self.sectors[sector_index].linedefs:
             x_min = max(linedef.vertex1.x, x_min)
             x_max = min(linedef.vertex2.x, x_max)
             y_min = max(linedef.vertex1.y, y_min)
@@ -658,14 +627,11 @@ class MapData(object):
         Returns the floor Z level at map coordinates x,y.
         """
         
-        sector_index = self.get_sector(x, y)
-        
-        plane = self.sector_extra[sector_index].floor_plane
-        if plane is None:
-            sector = self.sectors[sector_index]
+        sector = self.sectors[self.get_sector(x, y)]
+        if sector.floor_plane is None:            
             return sector.floorz
         else:
-            return plane.get_z(x, y)
+            return sector.floor_plane.get_z(x, y)
         
         
     def get_ceil_z(self, x, y):
@@ -673,14 +639,11 @@ class MapData(object):
         Returns the ceiling Z level at map coordinates x,y.
         """
         
-        sector_index = self.get_sector(x, y)
-        
-        plane = self.sector_extra[sector_index].ceil_plane
-        if plane is None:
-            sector = self.sectors[sector_index]
+        sector = self.sectors[self.get_sector(x, y)]
+        if sector.ceiling_plane is None:
             return sector.ceilingz
         else:
-            return plane.get_z(x, y)
+            return sector.ceiling_plane.get_z(x, y)
     
     
     def get_sector(self, x, y):
@@ -688,8 +651,7 @@ class MapData(object):
         Returns the sector index at map coordinates x,y.
         """
         
-        subsector_index = self.point_in_subsector(x, y)
-        return self.subsector_sectors[subsector_index]
+        return self.subsector_sectors[self.point_in_subsector(x, y)]
         
         
     def get_sector_floor_z(self, sector_index, x, y):
@@ -697,12 +659,11 @@ class MapData(object):
         Returns the floor Z level at map coordinates x,y inside a specific sector index.
         """
         
-        plane = self.sector_extra[sector_index].floor_plane
-      
-        if plane is None:
-            return self.sectors[sector_index].floorz
+        sector = self.sectors[sector_index]
+        if sector.floor_plane is None:
+            return sector.floorz
         else:
-            return plane.get_z(x, y)
+            return sector.floor_plane.get_z(x, y)
     
     
     def get_sector_ceil_z(self, sector_index, x, y):
@@ -710,12 +671,11 @@ class MapData(object):
         Returns the ceiling Z level at map coordinates x,y inside a specific sector index.
         """
         
-        plane = self.sector_extra[sector_index].ceil_plane
-      
-        if plane is None:
-            return self.sectors[sector_index].ceilingz
+        sector = self.sectors[sector_index]
+        if sector.ceiling_plane is None:
+            return sector.ceilingz
         else:
-            return plane.get_z(x, y)
+            return sector.ceiling_plane.get_z(x, y)
     
     
     def get_destination_from_teleport(self, line_index):

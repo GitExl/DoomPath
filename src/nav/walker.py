@@ -1,4 +1,4 @@
-from doom.mapobjects import Linedef
+from doom.mapobjects import Linedef, Sector
 from util.rectangle import Rectangle
 from util.vector import Vector3
 import config
@@ -212,10 +212,10 @@ class Walker(object):
 
     
     def check_sector_position(self, state):
-        sector_extra = self.map_data.sector_extra[state.sector_index]
+        sector = self.map_data.sectors[state.sector_index]
 
         # Find the floor and ceiling sectors to collide with.
-        for stack in sector_extra.threedstack:
+        for stack in sector.threedstack:
             sector_floor_z = self.map_data.get_sector_floor_z(stack[0], state.pos.x, state.pos.y)
             sector_ceil_z = self.map_data.get_sector_ceil_z(stack[1], state.pos.x, state.pos.y)
             
@@ -237,7 +237,7 @@ class Walker(object):
         # Get floor and ceiling z for sloped or normal sectors.
         # Sloped sectors are tested at all bounding box corners, non-sloped sector aren't.
         # Additionally, sloped 3dfloors need to check the bounding box corners in the control sector plane only. 
-        floor_plane = self.map_data.sector_extra[floor_sector_index].floor_plane
+        floor_plane = self.map_data.sectors[floor_sector_index].floor_plane
         if floor_plane is not None:
             if state.sector_index != floor_sector_index:
                 sector_floor_z = self.get_bb_floor_z(state.pos, state.radius, sector_index=floor_sector_index)
@@ -248,7 +248,7 @@ class Walker(object):
         else:
             sector_floor_z = self.map_data.get_sector_floor_z(floor_sector_index, state.pos.x, state.pos.y)
         
-        if self.map_data.sector_extra[ceil_sector_index].ceil_plane is not None:
+        if self.map_data.sectors[ceil_sector_index].ceiling_plane is not None:
             if state.sector_index != ceil_sector_index:
                 sector_ceil_z = self.get_bb_ceil_z(state.pos, state.radius, sector_index=ceil_sector_index)
             else:
@@ -257,16 +257,16 @@ class Walker(object):
             sector_ceil_z = self.map_data.get_sector_ceil_z(ceil_sector_index, state.pos.x, state.pos.y)
             
         # Keep this new floor as the special floor.
-        floor_extra = self.map_data.sector_extra[floor_sector_index]
-        if sector_floor_z >= state.floorz and floor_extra.is_special == True:
+        floor_sector = self.map_data.sectors[floor_sector_index]
+        if sector_floor_z >= state.floorz and (floor_sector.flags & Sector.FLAG_SPECIAL) != 0:
             state.special_sector = floor_sector_index
         
         # Keep floor planes.
-        if floor_extra.floor_plane is not None:
-            state.floor_plane = floor_extra.floor_plane
+        if floor_sector.floor_plane is not None:
+            state.floor_plane = floor_sector.floor_plane
             
         # Detect any moving sectors.
-        state.moves = floor_extra.moves or state.moves
+        state.moves = (floor_sector.flags & Sector.FLAG_MOVES) != 0 or state.moves
         
         # Choose tightest floor and ceiling fit.
         state.floorz = max(state.floorz, sector_floor_z)

@@ -211,12 +211,31 @@ class Sector(MapObject):
         'lightlevel',
         
         'action',
-        'tag'
+        'tag',
+        
+        # Additional data.
+        'linedefs',
+        'ceiling_plane',
+        'floor_plane',
+        'threedfloors',
+        'threedstack',
+        
+        'flags',
+        'damage'
     )
     
     STRUCT_DOOM = struct.Struct('<hh8s8shhh')
     STRUCT_HEXEN = struct.Struct('<hh8s8shhh')
     WAD_INDEX = 8
+    
+    # 3d floor sector stack indices.
+    THREEDFLOOR_SECTOR_BOTTOM = 0
+    THREEDFLOOR_SECTOR_TOP = 1
+    
+    # Internal flags.
+    FLAG_SPECIAL = 0x1
+    FLAG_MOVES = 0x2
+    FLAG_IGNORE = 0x4
 
 
     def __init__(self):
@@ -230,6 +249,16 @@ class Sector(MapObject):
         
         self.action = 0
         self.tag = 0
+
+        # Additional data.
+        self.linedefs = []
+        self.ceiling_plane = None
+        self.floor_plane = None
+        self.threedfloors = []
+        self.threedstack = []
+        
+        self.flags = 0
+        self.damage = 0
         
     
     def unpack_from(self, data, is_hexen):

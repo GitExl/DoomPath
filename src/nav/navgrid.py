@@ -1,4 +1,5 @@
 from doom.mapdata import Teleporter
+from doom.mapobjects import Sector
 from nav.navelement import NavElement
 from nav.navenum import *
 from nav.walker import Walker
@@ -61,10 +62,10 @@ class NavGrid(object):
         element = self.add_element_xyz(element_pos[0], element_pos[1], pos.z)
         
         sector_index = self.map_data.get_sector(element_pos[0], element_pos[1])
+        sector = self.map_data.sectors[sector_index]
         self.set_element_extra(sector_index, element)
         
-        sector_extra = self.map_data.sector_extra[sector_index]
-        if sector_extra.moves == True:
+        if (sector.flags & Sector.FLAG_MOVES) != 0:
             element.special_sector = sector_index
         
         self.element_tasks.append(element)
@@ -198,9 +199,9 @@ class NavGrid(object):
                 element = NavElement(0, 0, 0)
                 element.pos.x, element.pos.y, element.pos.z, plane_hash, element.special_sector, element.flags, element.elements[0], element.elements[1], element.elements[2], element.elements[3] = GRID_FILE_ELEMENT.unpack(f.read(GRID_FILE_ELEMENT.size))
                 
-                for sector_extra in self.map_data.sector_extra:
-                    if hash(sector_extra.floor_plane) == plane_hash:
-                        element.plane = sector_extra.floor_plane
+                for sector in self.map_data.sectors:
+                    if hash(sector.floor_plane) == plane_hash:
+                        element.plane = sector.floor_plane
                         break
                 
                 if element.special_sector == -1:
@@ -294,8 +295,8 @@ class NavGrid(object):
         collision, state = self.walker.check_position(check_pos, self.element_size, self.element_height)
         
         if state.special_sector is not None:
-            sector_extra = self.map_data.sector_extra[state.special_sector]
-            if sector_extra.ignore == True:
+            sector = self.map_data.sectors[state.special_sector]
+            if (sector.flags & Sector.FLAG_IGNORE) != 0:
                 return REASON_IGNORE, None
         
         jump = False
@@ -366,13 +367,13 @@ class NavGrid(object):
             
             
     def set_element_extra(self, sector_index, element):
-        sector_extra = self.map_data.sector_extra[sector_index]
+        sector = self.map_data.sectors[sector_index]
                             
         # Set sector damage flag.
-        if sector_extra.damage > 0:
-            if sector_extra.damage <= 5:
+        if sector.damage > 0:
+            if sector.damage <= 5:
                 element.flags |= FLAG_DAMAGE_LOW
-            elif sector_extra.damage <= 10:
+            elif sector.damage <= 10:
                 element.flags |= FLAG_DAMAGE_MEDIUM
-            elif sector_extra.damage >= 20:
+            elif sector.damage >= 20:
                 element.flags |= FLAG_DAMAGE_HIGH
