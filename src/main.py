@@ -1,4 +1,5 @@
-from doom import wad, mapdata
+from doom import wad
+from doom.map.data import MapData
 from nav import navgrid
 from nav.navmesh import NavMesh
 from util.vector import Vector2, Vector3
@@ -61,7 +62,7 @@ class Loop(object):
             print 'Map {} not found in {}.'.format(source_map, source_wad)
             return False
             
-        self.map_data = mapdata.MapData(wad_file, source_map)
+        self.map_data = MapData(wad_file, source_map)
         
         # Load dataset for map.
         if configuration == None:

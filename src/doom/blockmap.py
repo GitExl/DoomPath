@@ -5,6 +5,7 @@ from util.vector import Vector2
 import struct
 
 
+# Blockmap lump data sructures.
 BLOCKMAP_HEADER = struct.Struct('<hhHH')
 BLOCKMAP_LINEDEF = struct.Struct('<H')
 
@@ -45,6 +46,10 @@ class BlockMap(object):
     
     
     def get(self, pos):
+        """
+        Returns a block object from a position vector.
+        """
+        
         return self.get_xy(pos.x, pos.y)
     
     
@@ -122,18 +127,13 @@ class BlockMap(object):
         """
         
         for index, line in enumerate(map_data.linedefs):
-            x1 = line.vertex1.x
-            y1 = line.vertex1.y
-            x2 = line.vertex2.x
-            y2 = line.vertex2.y
+            dx = line.vertex2.x - line.vertex1.x
+            dy = line.vertex2.y - line.vertex1.y
             
-            dx = x2 - x1
-            dy = y2 - y1
-            
-            bx = (x1 - map_data.min.x) / self.blocksize
-            by = (y1 - map_data.min.y) / self.blocksize
-            bx2 = (x2 - map_data.min.x) / self.blocksize
-            by2 = (y2 - map_data.min.y) / self.blocksize
+            bx = (line.vertex1.x - map_data.min.x) / self.blocksize
+            by = (line.vertex1.y - map_data.min.y) / self.blocksize
+            bx2 = (line.vertex2.x - map_data.min.x) / self.blocksize
+            by2 = (line.vertex2.y - map_data.min.y) / self.blocksize
     
             block = self.blocks[bx + by * self.size.x]
             endblock = self.blocks[bx2 + by2 * self.size.x]
@@ -181,8 +181,8 @@ class BlockMap(object):
                 ady = abs(dy)
     
                 if adx == ady:
-                    xb = (x1 - map_data.min.x) & (self.blocksize - 1)
-                    yb = (y1 - map_data.min.y) & (self.blocksize - 1)
+                    xb = (line.vertex1.x - map_data.min.x) & (self.blocksize - 1)
+                    yb = (line.vertex1.y - map_data.min.y) & (self.blocksize - 1)
                     if dx < 0:
                         xb = self.blocksize - xb
                     if dy < 0:
@@ -198,9 +198,9 @@ class BlockMap(object):
                         yadd = self.blocksize
 
                     while (by != by2):
-                        a, b, c = (by * self.blocksize) + yadd - (y1 - map_data.min.y), dx, dy
+                        a, b, c = (by * self.blocksize) + yadd - (line.vertex1.y - map_data.min.y), dx, dy
                         scaled = a * b / c
-                        stop = (scaled + (x1 - map_data.min.x)) / self.blocksize
+                        stop = (scaled + (line.vertex1.x - map_data.min.x)) / self.blocksize
                         block = self.blocks[bx + by * self.size.x]
                         while (bx != stop):
                             block.linedefs.append(index)
@@ -226,9 +226,9 @@ class BlockMap(object):
                         xadd = self.blocksize
 
                     while(bx != bx2):
-                        a, b, c = (bx * self.blocksize) + xadd - (x1 - map_data.min.x), dy, dx
+                        a, b, c = (bx * self.blocksize) + xadd - (line.vertex1.x - map_data.min.x), dy, dx
                         scaled = a * b / c
-                        stop = (scaled + (y1 - map_data.min.y)) / self.blocksize
+                        stop = (scaled + (line.vertex1.y - map_data.min.y)) / self.blocksize
                         block = self.blocks[bx + by * self.size.x]
                         while (by != stop):
                             block.linedefs.append(index)
@@ -258,7 +258,7 @@ class BlockMap(object):
             thing_type = thing.doomid
             thing_def = config.thing_dimensions.get(thing_type)
             if thing_def is None:
-                    continue                
+                    continue
                 
             # Get bridge thing radius from Hexen parameters.
             if config.bridge_custom_type is not None and thing_type == config.bridge_custom_type:
@@ -358,6 +358,8 @@ class BlockMap(object):
         self.origin.y = header[1]
         self.size.x = header[2]
         self.size.y = header[3]
+        
+        # Default Doom block size.
         self.blocksize = 128
         
         # Read offsets.

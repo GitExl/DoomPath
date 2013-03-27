@@ -1,4 +1,4 @@
-from doom.mapobjects import Linedef, Sector
+from doom.map.objects import Linedef, Sector
 from util.rectangle import Rectangle
 from util.vector import Vector3
 import config

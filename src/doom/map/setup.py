@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding=utf8
 
-from doom.mapobjects import Teleporter, Segment, Linedef, Sector
+from doom.map.objects import Teleporter, Segment, Linedef, Sector
 from doom.plane import plane_setup
 from util.vector import Vector2
 
@@ -12,8 +12,17 @@ THREED_KIND_SWIMMABLE = 0x02
 THREED_KIND_NONSOLID = 0x04
 THREED_FLAG_IGNORE_BOTTOM = 0x08
 
+# Slope linedef special alignment flags.
+SLOPE_ALIGN_NONE = 0
+SLOPE_ALIGN_FRONT = 1
+SLOPE_ALIGN_BACK = 2
+
 
 class MapSetup(object):
+    """
+    Does map preprocessing for 3d floors, slopes, stairs and teleporters and marks special sectors that may move
+    during gameplay.
+    """
     
     def __init__(self, map_data, config):
         self.map_data = map_data
@@ -21,9 +30,12 @@ class MapSetup(object):
         
     
     def setup(self):
+        """
+        Sets up all additional map data.
+        """
+        
         self.setup_sector_data()
         self.setup_bounds()
-        
         self.setup_slopes()
         self.setup_threed_floors()
         self.setup_stairs()
@@ -61,6 +73,7 @@ class MapSetup(object):
             else:
                 continue
     
+            # Construct and add teleporter to list.
             teleporter = Teleporter()
             teleporter.kind = kind        
             teleporter.source_line = line_index
@@ -180,10 +193,12 @@ class MapSetup(object):
                     else:
                         break
     
+                    # Test if the next floor needs to have the same texture.
                     if ignore_floor_texture == False:
                         next_sector = self.map_data.sectors[next_sector_index]
                         if next_sector.texture_floor != current_sector.texture_floor:
                             break
+                        
                     current_sector_index = next_sector_index 
                 
         
@@ -274,10 +289,6 @@ class MapSetup(object):
         if self.config.slope_special is None:
             return
         
-        ALIGN_NONE = 0
-        ALIGN_FRONT = 1
-        ALIGN_BACK = 2
-        
         floor_slopes = 0
         ceil_slopes = 0
         
@@ -299,32 +310,33 @@ class MapSetup(object):
             elif line_action >= self.config.slope_special and line_action <= self.config.slope_special + 7:
                 line_action -= self.config.slope_special
                 if line_action == 0:
-                    align_floor = ALIGN_FRONT
-                    align_ceiling = ALIGN_NONE
+                    align_floor = SLOPE_ALIGN_FRONT
+                    align_ceiling = SLOPE_ALIGN_NONE
                 elif line_action == 1:
-                    align_floor = ALIGN_NONE
-                    align_ceiling = ALIGN_FRONT
+                    align_floor = SLOPE_ALIGN_NONE
+                    align_ceiling = SLOPE_ALIGN_FRONT
                 elif line_action == 2:
-                    align_floor = ALIGN_FRONT
-                    align_ceiling = ALIGN_FRONT
+                    align_floor = SLOPE_ALIGN_FRONT
+                    align_ceiling = SLOPE_ALIGN_FRONT
                 elif line_action == 3:
-                    align_floor = ALIGN_BACK
-                    align_ceiling = ALIGN_NONE
+                    align_floor = SLOPE_ALIGN_BACK
+                    align_ceiling = SLOPE_ALIGN_NONE
                 elif line_action == 4:
-                    align_floor = ALIGN_NONE
-                    align_ceiling = ALIGN_BACK
+                    align_floor = SLOPE_ALIGN_NONE
+                    align_ceiling = SLOPE_ALIGN_BACK
                 elif line_action == 5:
-                    align_floor = ALIGN_BACK
-                    align_ceiling = ALIGN_BACK
+                    align_floor = SLOPE_ALIGN_BACK
+                    align_ceiling = SLOPE_ALIGN_BACK
                 elif line_action == 6:
-                    align_floor = ALIGN_BACK
-                    align_ceiling = ALIGN_FRONT
+                    align_floor = SLOPE_ALIGN_BACK
+                    align_ceiling = SLOPE_ALIGN_FRONT
                 elif line_action == 7:
-                    align_floor = ALIGN_FRONT
-                    align_ceiling = ALIGN_BACK
+                    align_floor = SLOPE_ALIGN_FRONT
+                    align_ceiling = SLOPE_ALIGN_BACK
                 
                 sloped = True
             
+            # Handle plane setup for slope special linedefs.
             if sloped == True:
                 frontside = self.map_data.sidedefs[line.sidedef_front]
                 frontsector_index = frontside.sector
@@ -333,21 +345,21 @@ class MapSetup(object):
                 backsector_index = backside.sector
                 
                 # Floor plane?
-                if align_floor == ALIGN_FRONT:
+                if align_floor == SLOPE_ALIGN_FRONT:
                     plane = plane_setup(self.map_data, frontsector_index, self.map_data.sectors[frontsector_index].linedefs, line, True)
                     self.map_data.sectors[frontsector_index].floor_plane = plane
                     floor_slopes += 1
-                elif align_floor == ALIGN_BACK:
+                elif align_floor == SLOPE_ALIGN_BACK:
                     plane = plane_setup(self.map_data, backsector_index, self.map_data.sectors[backsector_index].linedefs, line, True)
                     self.map_data.sectors[backsector_index].floor_plane = plane
                     floor_slopes += 1
                     
                 # Ceiling plane?
-                if align_ceiling == ALIGN_FRONT:
+                if align_ceiling == SLOPE_ALIGN_FRONT:
                     plane = plane_setup(self.map_data, frontsector_index, self.map_data.sectors[frontsector_index].linedefs, line, False)
                     self.map_data.sectors[frontsector_index].ceiling_plane = plane
                     ceil_slopes += 1
-                elif align_ceiling == ALIGN_BACK:
+                elif align_ceiling == SLOPE_ALIGN_BACK:
                     plane = plane_setup(self.map_data, backsector_index, self.map_data.sectors[backsector_index].linedefs, line, False)
                     self.map_data.sectors[backsector_index].ceiling_plane = plane
                     ceil_slopes += 1
@@ -360,43 +372,45 @@ class MapSetup(object):
     
     def setup_lineids(self):
         """
-        Detect and store linedefs with an id assigned to them.
+        Store linedefs with an id assigned to them in a special dict for easy lookup.
         """
         
-        if self.map_data.is_hexen == True:
-            self.map_data.linedef_ids = {}
-            for index, linedef in enumerate(self.map_data.linedefs):
-                if linedef.action in self.config.line_identification_specials:
-                    line_id = linedef.args[0] + (linedef.args[4] * 256)
-                    self.map_data.linedef_ids[line_id] = index
+        # Doom maps can't have this.
+        if self.map_data.is_hexen == False:
+            return
         
+        self.map_data.linedef_ids = {}
+        for index, linedef in enumerate(self.map_data.linedefs):
+            if linedef.action in self.config.line_identification_specials:
+                line_id = linedef.args[0] + (linedef.args[4] * 256)
+                self.map_data.linedef_ids[line_id] = index
     
+
     def setup_movers(self):
         """
         Analyzes the map and marks sectors that are going to move during gameplay.
         """ 
         
-        # Detect tagged and special sectors, these are likely going to move.
         for sector_index, sector in enumerate(self.map_data.sectors):
             special = sector.action
             tag = sector.tag
             value = self.config.sector_types.get(special)
             
-            # Special tags.
+            # Special tagged sectors will move.
             if tag == 667 or tag == 666:
                 self.map_data.apply_extra_effect(sector_index, 'moves')
             
-            # Registered special sector type.
+            # Registered special sector types can be marked too.
             elif value is not None:
                 self.map_data.apply_extra_effect(sector_index, value)
                 
-            # Boom generalized sector types.
+            # Some Boom generalized sector types can move too.
             else:
                 for flag, value in self.config.sector_generalized_types.iteritems():
                     if (special & flag) != 0:
                         self.map_data.apply_extra_effect(sector_index, value)
             
-        # Detect linedef activation.
+        # Detect more complex linedef activation.
         for linedef in self.map_data.linedefs:
             line_type = linedef.action
             if self.map_data.is_hexen:
@@ -404,7 +418,7 @@ class MapSetup(object):
             else:
                 line_tag = linedef.tag
                 
-            # Activates sector on back side?
+            # The line activates the sector on it's back side?
             if line_tag == 0 and line_type in self.config.backside_activation_specials:
                 sidedef = linedef.sidedef_back
                 if sidedef != Linedef.SIDEDEF_NONE:
@@ -412,16 +426,16 @@ class MapSetup(object):
                     sector_index = sidedef.sector
                     self.map_data.apply_extra_effect(sector_index, 'moves')
             
-            # Activates tagged sector?
+            # The line activates a tagged sector?
             elif line_tag != 0 and (line_type in self.config.tag_activation_specials or line_type in self.config.backside_activation_specials):
                 target_sectors = self.map_data.get_tag_sectors(line_tag)
                 for sector_index in target_sectors:
                     self.map_data.apply_extra_effect(sector_index, 'moves')
                     
-            # Boom generalized linedef?
+            # The line has a Boom generalized action?
             elif self.config.generalized_specials is not None and line_type >= 0x2F80:
+                
                 for shift in self.config.generalized_specials:
-                    
                     # Sector tag activation of switch, walk and shoot triggers.
                     activation_type = ((line_type - shift) & 0x7)
                     if line_tag != 0:
@@ -438,13 +452,15 @@ class MapSetup(object):
                             self.map_data.apply_extra_effect(sector_index, 'moves')
                             
     
-    def get_destination_from_teleport(self, line_index):
+    def get_destination_from_teleport(self, linedef_index):
         """
         Returns a teleport destination thing for a linedef that has a teleport special,
         or None if the teleport is not valid.
+        
+        @param linedef_index: the index of the linedef from which the teleport originates. 
         """
         
-        linedef = self.map_data.linedefs[line_index]
+        linedef = self.map_data.linedefs[linedef_index]
         
         # Hexen style teleporters can have a TID target and a sector tag.
         if self.map_data.is_hexen == True:

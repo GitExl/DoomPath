@@ -1,4 +1,4 @@
-from doom.mapobjects import Linedef
+from doom.map.objects import Linedef
 from nav import navconnection
 from nav.navenum import DIRECTION_RANGE, DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT
 from util import rectangle

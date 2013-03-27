@@ -1,4 +1,4 @@
-from doom.mapobjects import Sector, Teleporter
+from doom.map.objects import Sector, Teleporter
 from nav.navelement import NavElement
 from nav.navenum import *
 from nav.walker import Walker

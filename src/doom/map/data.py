@@ -2,16 +2,14 @@
 #coding=utf8
 
 from doom import blockmap
-from doom.mapobjects import Thing, Linedef, Sidedef, Vertex, Segment, SubSector, Sector, Node
-from doom.mapsetup import MapSetup
+from doom.map.objects import Thing, Linedef, Sidedef, Vertex, Segment, SubSector, Sector, Node
+from doom.map.setup import MapSetup
 from util.vector import Vector2, Vector3
 
 
 class MapData(object):
     """
-    Reads map data from Doom and Hexen format WAD files.
-    
-    Does preprocessing for 3d floors, slopes and marks special sectors that may move during gameplay.
+    handles map data from Doom and Hexen format WAD files.
     """
     
     def __init__(self, wad_file, lump_name):
@@ -24,7 +22,7 @@ class MapData(object):
         self.nodes = None
         self.subsectors = None
         self.segments = None
-        self.blockmap = None        
+        self.blockmap = None
 
         # Additional map data, generated from raw data.
         self.linedef_ids = None

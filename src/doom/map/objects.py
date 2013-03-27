@@ -2,22 +2,39 @@
 #coding=utf8
 
 from util.rectangle import Rectangle
-from util.vector import Vector2
 import struct
 
 
 class MapObject(object):
+    """
+    Base map data object.
+    """
+    
     __slots__ = ()
     
+    # Structures describing how the data is stored inside their respective lumps.
     STRUCT_DOOM = None
     STRUCT_HEXEN = None
+    
+    # The index of this data type's lump, after the map header lump.
     WAD_INDEX = None
     
     
     def unpack_from(self, data, is_hexen):
+        """
+        Unpacks this map object's data.
+        
+        @param data: the string of data to unpack from.
+        @param is_hexen: True if the data type is in Hexen format.
+        """  
+        
         raise Exception('Undefined unpack_from in MapObject child.')
     
     def set_references(self, map_data):
+        """
+        Sets references for this map object if appropriate.
+        """
+        
         pass
     
     def __repr__(self):
@@ -25,6 +42,10 @@ class MapObject(object):
 
 
 class Vertex(MapObject):
+    """
+    A Doom vertex map object.
+    """
+    
     __slots__ = (
         'x',
         'y'
@@ -54,6 +75,10 @@ class Vertex(MapObject):
 
 
 class Linedef(MapObject):
+    """
+    A Doom linedef map object.
+    """
+    
     __slots__ = (
         'vertex1',
         'vertex2',
@@ -154,6 +179,10 @@ class Linedef(MapObject):
         
     
 class Sidedef(MapObject):
+    """
+    A Doom sidedef map object.
+    """
+    
     __slots__ = (
         'offset_x',
         'offset_y',
@@ -202,6 +231,12 @@ class Sidedef(MapObject):
 
 
 class Sector(MapObject):
+    """
+    A Doom sector map object.
+    
+    Additional sector data is stored in these objects as well, for internal use.
+    """
+    
     __slots__ = (
         'floorz',
         'ceilingz',
@@ -285,6 +320,10 @@ class Sector(MapObject):
         
 
 class Thing(MapObject):
+    """
+    A Doom thing map object.
+    """
+    
     __slots__ = (
         'x',
         'y',
@@ -376,6 +415,10 @@ class Thing(MapObject):
 
 
 class Segment(MapObject):
+    """
+    A Doom segment map object.
+    """
+    
     __slots__ = (
         'vertex_start',
         'vertex_end',
@@ -426,6 +469,10 @@ class Segment(MapObject):
         
         
 class Node(MapObject):
+    """
+    A Doom node map object.
+    """
+    
     __slots__ = (
         'x',
         'y',
@@ -483,6 +530,10 @@ class Node(MapObject):
         
 
 class SubSector(MapObject):
+    """
+    A Doom subsector map object.
+    """
+    
     __slots__ = (
         'segment_count',
         'first_segment',
@@ -518,13 +569,31 @@ class SubSector(MapObject):
 
 
 class Teleporter(object):
+    """
+    A teleporter source and destination description.
+    """
+
+    __slots__ = (
+        'source_line',
+        'dest_line',
+        'kind',
+        'dest'
+    )
+    
     # Teleporter type.
     TELEPORTER_THING = 0
     TELEPORTER_LINE = 1
     
     
     def __init__(self):
-        self.source_line = None
-        self.dest_line = None
+        # The type of teleporter.
         self.kind = Teleporter.TELEPORTER_THING
-        self.dest = Vector2()
+        
+        # The source linedef from where the teleport originates.
+        self.source_line = None
+        
+        # A destination linedef, if relevant.
+        self.dest_line = None
+        
+        # The Vector2 with the coordinates of the teleport destination, if relevant.
+        self.dest = None
