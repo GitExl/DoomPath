@@ -130,7 +130,8 @@ class NavMesh(object):
             if teleporter.kind == Teleporter.TELEPORTER_THING:
                 target_area = self.get_area_at(teleporter.dest)
             if teleporter.kind == Teleporter.TELEPORTER_LINE:
-                dest = self.map_data.get_line_center(teleporter.dest_line)
+                dest = Vector2()
+                dest.x, dest.y = self.map_data.get_line_center(teleporter.dest_line)
                 target_area = self.get_area_at(dest)
 
             # Ignore missing teleport targets.

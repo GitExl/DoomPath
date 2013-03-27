@@ -130,12 +130,12 @@ class MapData(object):
         """ 
 
         data = wad_file.get_lump_index(index + source_class.WAD_INDEX).get_data()
-
+        
         if self.is_hexen == True:
             item_struct = source_class.STRUCT_HEXEN
         else:
-            item_struct = source_class.STRUCT_DOOM 
-
+            item_struct = source_class.STRUCT_DOOM
+        
         datalist = []
         offset = 0
         while offset < len(data):
@@ -193,7 +193,7 @@ class MapData(object):
                     print 'Teleporter linedef {} has no valid destination thing.'.format(line_index)
                     continue
                 
-                dest = Vector2(target_thing[self.THING_X], target_thing[self.THING_Y])
+                dest = Vector2(target_thing.x, target_thing.y)
                 
             # Line to line teleporters.
             elif linedef.action in self.config.line_teleport_specials:
@@ -246,9 +246,9 @@ class MapData(object):
         """
         
         # Initialise sector extra data list.
-        self.sector_extra = [None] * len(self.sectors)
-        for sector_index in range(len(self.sectors)):
-            self.sector_extra[sector_index] = SectorExtra()            
+        self.sector_extra = []
+        for _ in self.sectors:
+            self.sector_extra.append(SectorExtra())            
         
         # Build a list of subsector to sector mappings.
         # Each subsector's first segment is taken. This segment's linedef is taken, then the
@@ -283,9 +283,6 @@ class MapData(object):
         """
         Detects sectors that are affected by stair builder specials.
         """
-        
-        # FIXME: this locks up in an infinite loop.
-        return
 
         for linedef in self.linedefs:
             action = linedef.action
@@ -356,13 +353,13 @@ class MapData(object):
         # Create lists of 3d floors in each sector.
         if self.config.threedfloor_special is not None:
             for linedef in self.linedefs:
-                action = linedef.special
+                action = linedef.action
                 if action == self.config.threedfloor_special:
                     sidedef = linedef.sidedef_front
                     if sidedef == Linedef.SIDEDEF_NONE:
                         continue
                     
-                    control_sector_index = sidedef.sector
+                    control_sector_index = self.sidedefs[sidedef].sector
                     control_sector = self.sectors[control_sector_index]
                     tag = linedef.args[0]
                     kind = linedef.args[1]
@@ -377,7 +374,7 @@ class MapData(object):
                     
                     # Solid, swap top and bottom.
                     if (kind & THREED_KIND_SOLID) != 0:
-                        control_sector.ceilingz, control_sector.floorz = control_sector.floorz, control_sector.ceilz
+                        control_sector.ceilingz, control_sector.floorz = control_sector.floorz, control_sector.ceiling
                     
                     for sector_index in target_sectors:
                         self.sector_extra[sector_index].threedfloors.append(control_sector_index)
@@ -476,30 +473,30 @@ class MapData(object):
                 sloped = True
             
             if sloped == True:
-                front = line.sidedef_front
-                frontsector = front.sector 
+                frontside = self.sidedefs[line.sidedef_front]
+                frontsector_index = frontside.sector
                 
-                back = line.sidedef_back
-                backsector = back.sector
+                backside = self.sidedefs[line.sidedef_back]
+                backsector_index = backside.sector
                 
                 # Floor plane?
                 if align_floor == ALIGN_FRONT:
-                    plane = plane_setup(self, frontsector, self.sector_extra[frontsector].linedefs, line, True)
-                    self.sector_extra[frontsector].floor_plane = plane
+                    plane = plane_setup(self, frontsector_index, self.sector_extra[frontsector_index].linedefs, line, True)
+                    self.sector_extra[frontsector_index].floor_plane = plane
                     floor_slopes += 1
                 elif align_floor == ALIGN_BACK:
-                    plane = plane_setup(self, backsector, self.sector_extra[backsector].linedefs, line, True)
-                    self.sector_extra[backsector].floor_plane = plane
+                    plane = plane_setup(self, backsector_index, self.sector_extra[backsector_index].linedefs, line, True)
+                    self.sector_extra[backsector_index].floor_plane = plane
                     floor_slopes += 1
                     
                 # Ceiling plane?
                 if align_ceiling == ALIGN_FRONT:
-                    plane = plane_setup(self, frontsector, self.sector_extra[frontsector].linedefs, line, False)
-                    self.sector_extra[frontsector].ceil_plane = plane
+                    plane = plane_setup(self, frontsector_index, self.sector_extra[frontsector_index].linedefs, line, False)
+                    self.sector_extra[frontsector_index].ceil_plane = plane
                     ceil_slopes += 1
                 elif align_ceiling == ALIGN_BACK:
-                    plane = plane_setup(self, backsector, self.sector_extra[backsector].linedefs, line, False)
-                    self.sector_extra[backsector].ceil_plane = plane
+                    plane = plane_setup(self, backsector_index, self.sector_extra[backsector_index].linedefs, line, False)
+                    self.sector_extra[backsector_index].ceil_plane = plane
                     ceil_slopes += 1
         
         if floor_slopes > 0:
@@ -539,8 +536,8 @@ class MapData(object):
         if self.is_hexen == True:
             self.linedef_ids = {}
             for index, linedef in enumerate(self.linedefs):
-                if linedef.special in self.config.line_identification_specials:
-                    line_id = linedef.args[0] + (linedef.args[1] * 256)
+                if linedef.action in self.config.line_identification_specials:
+                    line_id = linedef.args[0] + (linedef.args[4] * 256)
                     self.linedef_ids[line_id] = index
         
     
@@ -652,7 +649,7 @@ class MapData(object):
         output = []
 
         for thing in self.things:
-            if thing[self.THING_TYPE] == type_id:
+            if thing.doomid == type_id:
                 output.append(thing)
                 
         return output
@@ -683,7 +680,7 @@ class MapData(object):
         plane = self.sector_extra[sector_index].ceil_plane
         if plane is None:
             sector = self.sectors[sector_index]
-            return sector.ceilz
+            return sector.ceilingz
         else:
             return plane.get_z(x, y)
     
@@ -699,7 +696,7 @@ class MapData(object):
         
     def get_sector_floor_z(self, sector_index, x, y):
         """
-        Returns the floor Z level at map coordinates pos inside a specific sector index.
+        Returns the floor Z level at map coordinates x,y inside a specific sector index.
         """
         
         plane = self.sector_extra[sector_index].floor_plane
@@ -712,13 +709,13 @@ class MapData(object):
     
     def get_sector_ceil_z(self, sector_index, x, y):
         """
-        Returns the ceiling Z level at map coordinates pos inside a specific sector index.
+        Returns the ceiling Z level at map coordinates x,y inside a specific sector index.
         """
         
         plane = self.sector_extra[sector_index].ceil_plane
       
         if plane is None:
-            return self.sectors[sector_index].ceilz
+            return self.sectors[sector_index].ceilingz
         else:
             return plane.get_z(x, y)
     
@@ -833,7 +830,7 @@ class MapData(object):
         x2 = linedef.vertex2.x
         y2 = linedef.vertex2.y
                     
-        return Vector2(int(x1 + (x2 - x1) / 2), int(y1 + (y2 - y1) / 2))
+        return int(x1 + (x2 - x1) / 2), int(y1 + (y2 - y1) / 2)
 
 
     def point_on_node_side(self, x, y, node):

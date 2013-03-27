@@ -141,7 +141,7 @@ class Walker(object):
                 state.blockline = True
             else:
                 sidedef = self.map_data.sidedefs[sidedef_index]
-                state.sector_index = self.map_data.sectors.index(sidedef.sector)
+                state.sector_index = sidedef.sector
                 if state.sector_index != state.base_sector_index:
                     self.check_sector_position(state)
             
@@ -151,7 +151,7 @@ class Walker(object):
                 state.blockline = True
             else:
                 sidedef = self.map_data.sidedefs[sidedef_index]
-                state.sector_index = self.map_data.sectors.index(sidedef.sector)
+                state.sector_index = sidedef.sector
                 if state.sector_index != state.base_sector_index:
                     self.check_sector_position(state)
 
@@ -159,7 +159,7 @@ class Walker(object):
     def check_block_things(self, state, things):
         for thing_index in things:
             thing = self.map_data.things[thing_index]
-            thing_type = thing[self.map_data.THING_TYPE]
+            thing_type = thing.doomid
             
             # Parse custom bridge thing size.
             if self.config.bridge_custom_type is not None and thing_type == self.config.bridge_custom_type:
@@ -176,8 +176,8 @@ class Walker(object):
                 thing_height = thing_def.height
                 thing_flags = thing_def.flags
                 
-            thing_x = thing[self.map_data.THING_X]
-            thing_y = thing[self.map_data.THING_Y]
+            thing_x = thing.x
+            thing_y = thing.y
 
             rect = self.temp_rect
             rect.set(

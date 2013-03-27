@@ -118,18 +118,18 @@ def render_blockmap(map_data, surface, camera, mouse_pos):
 def render_things(map_data, surface, camera):
     color = COLOR_THING
     for thing in map_data.things:
-        thing_def = map_data.config.thing_dimensions.get(thing[map_data.THING_TYPE])
+        thing_def = map_data.config.thing_dimensions.get(thing.doomid)
         if thing_def is None:
             continue
 
-        x, y = camera.map_to_screen(thing[map_data.THING_X], thing[map_data.THING_Y])
+        x, y = camera.map_to_screen(thing.x, thing.y)
         pos = (int(x), int(y))
         radius = int((thing_def.radius / 3) * camera.zoom)
         if radius >= 1:
             pygame.draw.circle(surface, color, pos, radius)
             
         rect = pygame.Rect(
-            camera.map_to_screen(thing[map_data.THING_X] - thing_def.radius, thing[map_data.THING_Y] - thing_def.radius),
+            camera.map_to_screen(thing.x - thing_def.radius, thing.y - thing_def.radius),
             ((thing_def.radius * 2) * camera.zoom, (thing_def.radius * 2) * camera.zoom)
         )
         pygame.draw.rect(surface, color, rect, 1)

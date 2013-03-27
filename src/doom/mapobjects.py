@@ -426,8 +426,8 @@ class Node(MapObject):
         
         self.bb_right = Rectangle()
         self.bb_left = Rectangle()
-        self.child_left = 0
         self.child_right = 0
+        self.child_left = 0
     
     
     def unpack_from(self, data, is_hexen):
@@ -440,8 +440,8 @@ class Node(MapObject):
         self.bb_right.set(data[4], data[5], data[6], data[7])
         self.bb_left.set(data[8], data[9], data[10], data[11])
         
-        self.child_left = data[12]
-        self.child_right = data[13]
+        self.child_right = data[12]
+        self.child_left = data[13]
     
     
     def set_references(self, map_data):
@@ -458,8 +458,8 @@ class SubSector(MapObject):
         'first_segment'
     )
     
-    STRUCT_DOOM = struct.Struct('<HHhHhh')
-    STRUCT_HEXEN = struct.Struct('<HHhHhh')
+    STRUCT_DOOM = struct.Struct('<HH')
+    STRUCT_HEXEN = struct.Struct('<HH')
     WAD_INDEX = 6
     
     

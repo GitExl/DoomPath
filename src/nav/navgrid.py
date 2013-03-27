@@ -113,7 +113,8 @@ class NavGrid(object):
                 dest.x = teleporter.dest.x
                 dest.y = teleporter.dest.y
             else:
-                dest = self.map_data.get_line_center(teleporter.dest_line)
+                dest = Vector3()
+                dest.x, dest.y = self.map_data.get_line_center(teleporter.dest_line)
                 
             dest.z = self.map_data.get_floor_z(dest.x, dest.y)
             
