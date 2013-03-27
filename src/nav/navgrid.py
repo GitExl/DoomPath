@@ -282,14 +282,14 @@ class NavGrid(object):
         
     def test_element(self, pos, direction, element, new_element):
         # See if an adjoining element can be placed.
-        map_pos = self.element_to_map(pos)
-        if map_pos[0] < self.map_data.min_x or map_pos[0] > self.map_data.max_x or map_pos[1] < self.map_data.min_y or map_pos[1] > self.map_data.max_y:
-            print 'Grid leak at {}'.format(map_pos)
+        map_x, map_y = self.element_to_map(pos)
+        if map_x < self.map_data.min.x or map_x > self.map_data.max.x or map_y < self.map_data.min.y or map_y > self.map_data.max.y:
+            print 'Grid leak at ({}, {})'.format(map_x, map_y)
             return REASON_LEAK, None
         
         check_pos = self.check_pos
-        check_pos.x = map_pos[0]
-        check_pos.y = map_pos[1]
+        check_pos.x = map_x
+        check_pos.y = map_y
         check_pos.z = pos.z
         collision, state = self.walker.check_position(check_pos, self.element_size, self.element_height)
         

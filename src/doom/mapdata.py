@@ -14,7 +14,6 @@ class MapData(object):
     Does preprocessing for 3d floors, slopes and marks special sectors that may move during gameplay.
     """
     
-
     def __init__(self, wad_file, lump_name):
         # Raw map data.
         self.vertices = None
@@ -35,16 +34,9 @@ class MapData(object):
         self.is_hexen = False
 
         # Map bounds.
-        self.min_x = 0x80000
-        self.max_x = 0
-        self.min_y = 0x80000
-        self.max_y = 0
-        self.min_z = 0x80000
-        self.max_z = 0
-        
+        self.min = Vector3(0x8000, 0x8000, 0x8000)
+        self.max = Vector3()
         self.size = Vector3()
-        
-        self.config = None
 
         # Find map header lump index.
         headerindex = wad_file.get_index(lump_name)
@@ -106,6 +98,10 @@ class MapData(object):
     
     
     def set_data_references(self, datalist):
+        """
+        Sets map object list indices to references.
+        """
+        
         for item in datalist:
             item.set_references(self)
                 
@@ -117,15 +113,13 @@ class MapData(object):
         @param config: a configuration object containing action and thing information to process.
         """
         
-        self.config = config
-        
         # Process map data.
-        setup = MapSetup(self)
+        setup = MapSetup(self, config)
         setup.setup()
         
         # Build blockmap.
         self.blockmap = blockmap.BlockMap()
-        self.blockmap.generate(self)
+        self.blockmap.generate(self, config)
     
     
     def get_tag_sectors(self, tag):
@@ -229,31 +223,6 @@ class MapData(object):
             return sector.ceilingz
         else:
             return sector.ceiling_plane.get_z(x, y)
-    
-    
-    def get_destination_from_teleport(self, line_index):
-        """
-        Returns a teleport destination thing for a linedef that has a teleport special,
-        or None if the teleport is not valid.
-        """
-        
-        linedef = self.linedefs[line_index]
-        
-        # Hexen style teleporters can have a TID target and a sector tag.
-        if self.is_hexen == True:
-            dest_tid = linedef.args[0]
-            dest_tag = linedef.args[1]
-            if dest_tag <= 0:
-                dest_tag = None
-            
-            target_thing = self.get_tid_in_sector(dest_tid, dest_tag)
-        
-        # Doom style teleporters teleport to a fixed thing type in a tagged sector.
-        else:
-            dest_tag = linedef.tag
-            target_thing = self.get_thingtype_in_sector(dest_tag, self.config.teleport_thing_type) 
-        
-        return target_thing
 
     
     def get_tid_in_sector(self, tid, sector_tag=None):
@@ -345,6 +314,17 @@ class MapData(object):
 
 
     def point_on_node_side(self, x, y, node):
+        """
+        Returns on what side of a node the x, y coordiantes are.
+        
+        @param x: x coordinate to test.
+        @param y: y coordinate to test.
+        @param node: node to test against.
+        
+        @return: False if the point lies on the right side of the node,
+                 True if the point lies on the left side of the node.
+        """
+        
         if node.delta_x == 0:
             if x <= node.x:
                 return node.delta_y > 0
@@ -367,6 +347,10 @@ class MapData(object):
     
     
     def point_in_subsector(self, x, y):
+        """
+        Returns the subsector index that the specified coordinates are in.
+        """
+        
         node_index = len(self.nodes) - 1
     
         while (node_index & Node.FLAG_SUBSECTOR) == 0:

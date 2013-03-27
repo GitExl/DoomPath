@@ -115,10 +115,10 @@ def render_blockmap(map_data, surface, camera, mouse_pos):
             pygame.draw.rect(surface, color, rect, 1)
 
 
-def render_things(map_data, surface, camera):
+def render_things(map_data, config, surface, camera):
     color = COLOR_THING
     for thing in map_data.things:
-        thing_def = map_data.config.thing_dimensions.get(thing.doomid)
+        thing_def = config.thing_dimensions.get(thing.doomid)
         if thing_def is None:
             continue
 

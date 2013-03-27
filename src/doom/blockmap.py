@@ -130,10 +130,10 @@ class BlockMap(object):
             dx = x2 - x1
             dy = y2 - y1
             
-            bx = (x1 - map_data.min_x) / self.blocksize
-            by = (y1 - map_data.min_y) / self.blocksize
-            bx2 = (x2 - map_data.min_x) / self.blocksize
-            by2 = (y2 - map_data.min_y) / self.blocksize
+            bx = (x1 - map_data.min.x) / self.blocksize
+            by = (y1 - map_data.min.y) / self.blocksize
+            bx2 = (x2 - map_data.min.x) / self.blocksize
+            by2 = (y2 - map_data.min.y) / self.blocksize
     
             block = self.blocks[bx + by * self.size.x]
             endblock = self.blocks[bx2 + by2 * self.size.x]
@@ -181,8 +181,8 @@ class BlockMap(object):
                 ady = abs(dy)
     
                 if adx == ady:
-                    xb = (x1 - map_data.min_x) & (self.blocksize - 1)
-                    yb = (y1 - map_data.min_y) & (self.blocksize - 1)
+                    xb = (x1 - map_data.min.x) & (self.blocksize - 1)
+                    yb = (y1 - map_data.min.y) & (self.blocksize - 1)
                     if dx < 0:
                         xb = self.blocksize - xb
                     if dy < 0:
@@ -198,9 +198,9 @@ class BlockMap(object):
                         yadd = self.blocksize
 
                     while (by != by2):
-                        a, b, c = (by * self.blocksize) + yadd - (y1 - map_data.min_y), dx, dy
+                        a, b, c = (by * self.blocksize) + yadd - (y1 - map_data.min.y), dx, dy
                         scaled = a * b / c
-                        stop = (scaled + (x1 - map_data.min_x)) / self.blocksize
+                        stop = (scaled + (x1 - map_data.min.x)) / self.blocksize
                         block = self.blocks[bx + by * self.size.x]
                         while (bx != stop):
                             block.linedefs.append(index)
@@ -226,9 +226,9 @@ class BlockMap(object):
                         xadd = self.blocksize
 
                     while(bx != bx2):
-                        a, b, c = (bx * self.blocksize) + xadd - (x1 - map_data.min_x), dy, dx
+                        a, b, c = (bx * self.blocksize) + xadd - (x1 - map_data.min.x), dy, dx
                         scaled = a * b / c
-                        stop = (scaled + (y1 - map_data.min_y)) / self.blocksize
+                        stop = (scaled + (y1 - map_data.min.y)) / self.blocksize
                         block = self.blocks[bx + by * self.size.x]
                         while (by != stop):
                             block.linedefs.append(index)
@@ -247,7 +247,7 @@ class BlockMap(object):
                     block.linedefs.append(index)
                     
                     
-    def generate_things(self, map_data):
+    def generate_things(self, map_data, config):
         """
         Places all things in the blockmap blocks that they occupy.
         
@@ -256,12 +256,12 @@ class BlockMap(object):
         
         for index, thing in enumerate(map_data.things):
             thing_type = thing.doomid
-            thing_def = map_data.config.thing_dimensions.get(thing_type)
+            thing_def = config.thing_dimensions.get(thing_type)
             if thing_def is None:
                     continue                
                 
             # Get bridge thing radius from Hexen parameters.
-            if map_data.config.bridge_custom_type is not None and thing_type == map_data.config.bridge_custom_type:
+            if config.bridge_custom_type is not None and thing_type == config.bridge_custom_type:
                 radius = thing.args[0]
             
             # Use configuration radius
@@ -312,15 +312,15 @@ class BlockMap(object):
                     block.areas.append(index)
         
     
-    def generate(self, map_data):
+    def generate(self, map_data, config):
         """
         Generate a new blockmap from amap data object.
         
         @param map_data: the map data object to generate the blockmap for.
         """
         
-        self.origin.x = map_data.min_x
-        self.origin.y = map_data.min_y
+        self.origin.x = map_data.min.x
+        self.origin.y = map_data.min.y
         
         self.size.x = int(map_data.size.x / self.blocksize) + 1
         self.size.y = int(map_data.size.y / self.blocksize) + 1
@@ -333,7 +333,7 @@ class BlockMap(object):
 
         # Generate Block contents.
         self.generate_linedefs(map_data)
-        self.generate_things(map_data)
+        self.generate_things(map_data, config)
     
     
     def prune_empty(self):

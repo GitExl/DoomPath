@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#coding=utf8
+
 from doom.mapobjects import Teleporter, Segment, Linedef, Sector
 from doom.plane import plane_setup
 from util.vector import Vector2
@@ -12,8 +15,9 @@ THREED_FLAG_IGNORE_BOTTOM = 0x08
 
 class MapSetup(object):
     
-    def __init__(self, map_data):
+    def __init__(self, map_data, config):
         self.map_data = map_data
+        self.config = config
         
     
     def setup(self):
@@ -37,9 +41,9 @@ class MapSetup(object):
         for line_index, linedef in enumerate(self.map_data.linedefs):
             
             # Line to thing teleporters.
-            if linedef.action in self.map_data.config.thing_teleport_specials:
+            if linedef.action in self.config.thing_teleport_specials:
                 kind = Teleporter.TELEPORTER_THING
-                target_thing = self.map_data.get_destination_from_teleport(line_index)
+                target_thing = self.get_destination_from_teleport(line_index)
                 if target_thing is None:
                     print 'Teleporter linedef {} has no valid destination thing.'.format(line_index)
                     continue
@@ -47,7 +51,7 @@ class MapSetup(object):
                 dest = Vector2(target_thing.x, target_thing.y)
                 
             # Line to line teleporters.
-            elif linedef.action in self.map_data.config.line_teleport_specials:
+            elif linedef.action in self.config.line_teleport_specials:
                 kind = Teleporter.TELEPORTER_LINE
                 dest_line = self.map_data.get_line_destination(line_index)
                 if dest_line is None:
@@ -75,20 +79,22 @@ class MapSetup(object):
         
         # Calculate map width and height.
         for vertex in self.map_data.vertices:
-            self.map_data.min_x = min(self.map_data.min_x, vertex.x)
-            self.map_data.max_x = max(self.map_data.max_x, vertex.x)
-            self.map_data.min_y = min(self.map_data.min_y, vertex.y)
-            self.map_data.max_y = max(self.map_data.max_y, vertex.y)
-        self.map_data.size.x = self.map_data.max_x - self.map_data.min_x
-        self.map_data.size.y = self.map_data.max_y - self.map_data.min_y
-    
-        # Detect map depth.
+            self.map_data.min.x = min(self.map_data.min.x, vertex.x)
+            self.map_data.max.x = max(self.map_data.max.x, vertex.x)
+            self.map_data.min.y = min(self.map_data.min.y, vertex.y)
+            self.map_data.max.y = max(self.map_data.max.y, vertex.y)
+        
+        # Find map depth.
         for sector in self.map_data.sectors:
             floorz = sector.floorz
             ceilz = sector.ceilingz
-            self.map_data.min_z = min(floorz, min(ceilz, self.map_data.min_z))
-            self.map_data.max_z = max(floorz, max(ceilz, self.map_data.max_z))
-        self.map_data.size.z = self.map_data.max_z - self.map_data.min_z
+            self.map_data.min.z = min(floorz, min(ceilz, self.map_data.min.z))
+            self.map_data.max.z = max(floorz, max(ceilz, self.map_data.max.z))
+        
+        # Set map dimensions.
+        self.map_data.size.x = self.map_data.max.x - self.map_data.min.x
+        self.map_data.size.y = self.map_data.max.y - self.map_data.min.y
+        self.map_data.size.z = self.map_data.max.z - self.map_data.min.z
     
     
     def setup_sector_data(self):
@@ -128,7 +134,7 @@ class MapSetup(object):
             action = linedef.action
             
             is_boom = (action >= 0x3000 and action <= 0x33FF)
-            if not action in self.map_data.config.stair_specials and not is_boom:
+            if not action in self.config.stair_specials and not is_boom:
                 continue
             
             # Stair actions start at 0x3000. floor texture ignorance starts at 0x200 in stair action, shifted by 9 bits.
@@ -184,18 +190,23 @@ class MapSetup(object):
     def setup_threed_floors(self):
         """
         Sets up 3d floor stacks.
+        
+        A 3d floor stack is an array of (top_sector_index, bottom_sector_index) tuples, describing the sector's
+        layout. Even sectors that do not have any 3d floors in them have one such tuple describing the sector as it is. 
         """
         
         threed_count = 0
         
         # Create lists of 3d floors in each sector.
-        if self.map_data.config.threedfloor_special is not None:
+        if self.config.threedfloor_special is not None:
+            
             for linedef in self.map_data.linedefs:
-                if linedef.action == self.map_data.config.threedfloor_special:
+                if linedef.action == self.config.threedfloor_special:
                     sidedef = linedef.sidedef_front
                     if sidedef == Linedef.SIDEDEF_NONE:
                         continue
                     
+                    # Find the control sector being used.
                     control_sector_index = self.map_data.sidedefs[sidedef].sector
                     control_sector = self.map_data.sectors[control_sector_index]
                     tag = linedef.args[0]
@@ -203,16 +214,18 @@ class MapSetup(object):
                     
                     target_sectors = self.map_data.get_tag_sectors(tag)
                     if len(target_sectors) == 0:
+                        print '3D floor control sector tag {} has not target sectors.'.format(tag)
                         continue
                     
-                    # 3d floor is non-solid or swimmable, ignore it.
+                    # The 3d floor is non-solid or swimmable, ignore it.
                     if (kind & THREED_KIND_SWIMMABLE) != 0 or (kind & THREED_KIND_NONSOLID) != 0:
                         continue
                     
-                    # Solid, swap top and bottom.
+                    # The 3d floor is solid, swap the top and bottom.
                     if (kind & THREED_KIND_SOLID) != 0:
                         control_sector.ceilingz, control_sector.floorz = control_sector.floorz, control_sector.ceiling
                     
+                    # Append the 3d floor to all target sectors.
                     for sector_index in target_sectors:
                         self.map_data.sectors[sector_index].threedfloors.append(control_sector_index)
                         
@@ -220,16 +233,19 @@ class MapSetup(object):
                 
         # Create sector_floor, sector_ceiling stacks. Even sectors without 3d floors get a single item on the stack.
         for sector_index, sector in enumerate(self.map_data.sectors):
+            
+            # Create a single stack entry for normal sectors.
             if len(sector.threedfloors) == 0:
                 data = (sector_index, sector_index)
                 sector.threedstack.append(data)
             
+            # Each 3d floor + 1 generates a stack entry.
             else:
                 # Sort threed floors by their floor height at the center of the target sector.
                 center = self.map_data.get_sector_center(sector_index)
                 sector.threedfloors = sorted(sector.threedfloors, key=lambda threed: self.map_data.get_sector_ceil_z(threed, center.x, center.y))
                 
-                # Create stack of 3d floor top and bottom sector indices.
+                # Create a stack of 3d floor top and bottom sector indices.
                 sector_top = sector.threedfloors[0]
                 data = (sector_index, sector_top)
                 sector.threedstack.append(data)
@@ -252,10 +268,10 @@ class MapSetup(object):
     
     def setup_slopes(self):
         """
-        Sets up slope planes from slope specials.
+        Sets up sector slope planes from slope specials.
         """
         
-        if self.map_data.config.slope_special is None:
+        if self.config.slope_special is None:
             return
         
         ALIGN_NONE = 0
@@ -271,7 +287,7 @@ class MapSetup(object):
             sloped = False
             if self.map_data.is_hexen:
                 # Hexen slope floor special.
-                if line_action == self.map_data.config.slope_special:
+                if line_action == self.config.slope_special:
                     align_floor = line.args[0] & 3
                     align_ceiling = line.args[1] & 3
                     if align_ceiling == 0:
@@ -280,8 +296,8 @@ class MapSetup(object):
                     sloped = True
                 
             # Doom style sloped floors.
-            elif line_action >= self.map_data.config.slope_special and line_action <= self.map_data.config.slope_special + 7:
-                line_action -= self.map_data.config.slope_special
+            elif line_action >= self.config.slope_special and line_action <= self.config.slope_special + 7:
+                line_action -= self.config.slope_special
                 if line_action == 0:
                     align_floor = ALIGN_FRONT
                     align_ceiling = ALIGN_NONE
@@ -350,7 +366,7 @@ class MapSetup(object):
         if self.map_data.is_hexen == True:
             self.map_data.linedef_ids = {}
             for index, linedef in enumerate(self.map_data.linedefs):
-                if linedef.action in self.map_data.config.line_identification_specials:
+                if linedef.action in self.config.line_identification_specials:
                     line_id = linedef.args[0] + (linedef.args[4] * 256)
                     self.map_data.linedef_ids[line_id] = index
         
@@ -364,7 +380,7 @@ class MapSetup(object):
         for sector_index, sector in enumerate(self.map_data.sectors):
             special = sector.action
             tag = sector.tag
-            value = self.map_data.config.sector_types.get(special)
+            value = self.config.sector_types.get(special)
             
             # Special tags.
             if tag == 667 or tag == 666:
@@ -376,7 +392,7 @@ class MapSetup(object):
                 
             # Boom generalized sector types.
             else:
-                for flag, value in self.map_data.config.sector_generalized_types.iteritems():
+                for flag, value in self.config.sector_generalized_types.iteritems():
                     if (special & flag) != 0:
                         self.map_data.apply_extra_effect(sector_index, value)
             
@@ -389,7 +405,7 @@ class MapSetup(object):
                 line_tag = linedef.tag
                 
             # Activates sector on back side?
-            if line_tag == 0 and line_type in self.map_data.config.backside_activation_specials:
+            if line_tag == 0 and line_type in self.config.backside_activation_specials:
                 sidedef = linedef.sidedef_back
                 if sidedef != Linedef.SIDEDEF_NONE:
                     sidedef = self.map_data.sidedefs[sidedef]
@@ -397,14 +413,14 @@ class MapSetup(object):
                     self.map_data.apply_extra_effect(sector_index, 'moves')
             
             # Activates tagged sector?
-            elif line_tag != 0 and (line_type in self.map_data.config.tag_activation_specials or line_type in self.map_data.config.backside_activation_specials):
+            elif line_tag != 0 and (line_type in self.config.tag_activation_specials or line_type in self.config.backside_activation_specials):
                 target_sectors = self.map_data.get_tag_sectors(line_tag)
                 for sector_index in target_sectors:
                     self.map_data.apply_extra_effect(sector_index, 'moves')
                     
             # Boom generalized linedef?
-            elif self.map_data.config.generalized_specials is not None and line_type >= 0x2F80:
-                for shift in self.map_data.config.generalized_specials:
+            elif self.config.generalized_specials is not None and line_type >= 0x2F80:
+                for shift in self.config.generalized_specials:
                     
                     # Sector tag activation of switch, walk and shoot triggers.
                     activation_type = ((line_type - shift) & 0x7)
@@ -420,3 +436,28 @@ class MapSetup(object):
                             sidedef = self.map_data.sidedefs[sidedef]
                             sector_index = sidedef.sector
                             self.map_data.apply_extra_effect(sector_index, 'moves')
+                            
+    
+    def get_destination_from_teleport(self, line_index):
+        """
+        Returns a teleport destination thing for a linedef that has a teleport special,
+        or None if the teleport is not valid.
+        """
+        
+        linedef = self.map_data.linedefs[line_index]
+        
+        # Hexen style teleporters can have a TID target and a sector tag.
+        if self.map_data.is_hexen == True:
+            dest_tid = linedef.args[0]
+            dest_tag = linedef.args[1]
+            if dest_tag <= 0:
+                dest_tag = None
+            
+            target_thing = self.map_data.get_tid_in_sector(dest_tid, dest_tag)
+        
+        # Doom style teleporters teleport to a fixed thing type in a tagged sector.
+        else:
+            dest_tag = linedef.tag
+            target_thing = self.map_data.get_thingtype_in_sector(dest_tag, self.config.teleport_thing_type) 
+        
+        return target_thing

@@ -162,7 +162,7 @@ class Loop(object):
         #render.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_pos)
         #elements = render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_pos)
         render.render_linedefs(self.map_data, self.screen, self.camera, sector)
-        render.render_things(self.map_data, self.screen, self.camera)
+        render.render_things(self.map_data, self.config, self.screen, self.camera)
         areas = render.render_navmesh(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
         connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
         state = self.render_collision_box()
@@ -236,8 +236,8 @@ class Loop(object):
         display_size = min(1280, 720)
         zoom = float(display_size) / float(map_size) - 0.005
 
-        x = self.map_data.min_x + self.map_data.size.x / 2
-        y = self.map_data.min_y + self.map_data.size.y / 2
+        x = self.map_data.min.x + self.map_data.size.x / 2
+        y = self.map_data.min.y + self.map_data.size.y / 2
  
         self.camera.set_zoom(zoom)
         self.camera.set_center(x, y)

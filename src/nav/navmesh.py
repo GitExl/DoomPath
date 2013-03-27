@@ -39,8 +39,8 @@ class NavMesh(object):
         
         # Determine the locations where to test for elements.
         grid_area = Rectangle()
-        grid_area.left = self.nav_grid.map_data.min_x / self.nav_grid.element_size
-        grid_area.top = self.nav_grid.map_data.min_y / self.nav_grid.element_size
+        grid_area.left = self.nav_grid.map_data.min.x / self.nav_grid.element_size
+        grid_area.top = self.nav_grid.map_data.min.y / self.nav_grid.element_size
         grid_area.right = grid_area.left + self.nav_grid.width
         grid_area.bottom = grid_area.top + self.nav_grid.height
         
