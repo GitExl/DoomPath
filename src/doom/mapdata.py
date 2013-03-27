@@ -167,6 +167,9 @@ class MapData(object):
         self.config = config
         
         self.setup_sector_data()
+        self.setup_slopes()
+        self.setup_threed_floors()
+        self.setup_stairs()
         self.calculate_map_size()
         self.analyze()
         self.setup_lineids()
@@ -272,11 +275,6 @@ class MapData(object):
                 sidedef = self.sidedefs[linedef.sidedef_back]
             
             self.sector_extra[sidedef.sector].linedefs.append(linedef)
-
-        # Generate other sector structures.
-        self.setup_slopes()
-        self.setup_threed_floors()
-        self.setup_stairs()
         
         
     def setup_stairs(self):
@@ -299,9 +297,9 @@ class MapData(object):
                 ignore_floor_texture = False
             
             if self.is_hexen:
-                tag = linedef.tag
-            else:
                 tag = linedef.args[0]
+            else:
+                tag = linedef.tag
                 
             # Build stair list for each starting sector.
             start_sectors = self.get_tag_sectors(tag)
@@ -613,13 +611,13 @@ class MapData(object):
         Returns a list of sectors that have a specific tag.
         """
         
-        sectors = []
+        sectorlist = []
         
         for sector_index, sector in enumerate(self.sectors):
             if sector.tag == tag:
-                sectors.append(sector_index)
+                sectorlist.append(sector_index)
             
-        return sectors
+        return sectorlist
     
     
     def get_sector_center(self, sector_index):
