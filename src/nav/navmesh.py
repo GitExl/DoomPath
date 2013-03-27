@@ -1,4 +1,4 @@
-from doom.mapdata import Teleporter
+from doom.mapobjects import Teleporter
 from doom.plane import Plane
 from nav import navconnection
 from nav.navarea import NavArea

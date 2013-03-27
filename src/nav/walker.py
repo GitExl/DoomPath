@@ -82,7 +82,7 @@ class Walker(object):
         state.reset(pos, radius, height)
                 
         subsector_index = self.map_data.point_in_subsector(pos.x, pos.y)
-        state.sector_index = self.map_data.subsector_sectors[subsector_index]
+        state.sector_index = self.map_data.subsectors[subsector_index].sector
         state.base_sector_index = state.sector_index
             
         self.check_sector_position(state)

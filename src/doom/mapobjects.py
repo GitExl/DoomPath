@@ -2,6 +2,7 @@
 #coding=utf8
 
 from util.rectangle import Rectangle
+from util.vector import Vector2
 import struct
 
 
@@ -484,7 +485,10 @@ class Node(MapObject):
 class SubSector(MapObject):
     __slots__ = (
         'segment_count',
-        'first_segment'
+        'first_segment',
+        
+        # Additional data.
+        'sector'
     )
     
     STRUCT_DOOM = struct.Struct('<HH')
@@ -495,6 +499,9 @@ class SubSector(MapObject):
     def __init__(self, first_segment=0):
         self.segment_count = 0
         self.first_segment = first_segment
+        
+        # Additional data.
+        self.sector = None
     
     
     def unpack_from(self, data, is_hexen):
@@ -507,4 +514,17 @@ class SubSector(MapObject):
 
     
     def __repr__(self):
-        return 'SubSector: segments {}'.format(self.segment_count)
+        return 'SubSector: segments {}, sector {}'.format(self.segment_count, self.sector)
+
+
+class Teleporter(object):
+    # Teleporter type.
+    TELEPORTER_THING = 0
+    TELEPORTER_LINE = 1
+    
+    
+    def __init__(self):
+        self.source_line = None
+        self.dest_line = None
+        self.kind = Teleporter.TELEPORTER_THING
+        self.dest = Vector2()
