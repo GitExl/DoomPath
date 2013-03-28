@@ -1,6 +1,5 @@
 from doom.map.objects import Sector, Teleporter
 from nav.navelement import NavElement
-from nav.navenum import *
 from nav.walker import Walker
 from util.vector import Vector3
 import struct
@@ -145,7 +144,7 @@ class NavGrid(object):
                 
         # Remove now invalid element connections.
         for element in self.elements:
-            for direction in DIRECTION_RANGE:
+            for direction in NavElement.DIR_RANGE:
                 if element.elements[direction] in self.element_prune:
                     element.elements[direction] = None
         
@@ -167,7 +166,7 @@ class NavGrid(object):
                 else:
                     plane_hash = hash(element.plane)
                 
-                for direction in DIRECTION_RANGE:
+                for direction in NavElement.DIR_RANGE:
                     if element.elements[direction] is None:
                         indices[direction] = -1
                     else:
@@ -210,7 +209,7 @@ class NavGrid(object):
 
         # Set element references from stored indices.
         for element in self.elements:
-            for direction in DIRECTION_RANGE:
+            for direction in NavElement.DIR_RANGE:
                 if element.elements[direction] != -1:
                     element.elements[direction] = self.elements[element.elements[direction]]
                 else:
@@ -259,15 +258,15 @@ class NavGrid(object):
             if len(self.elements) % 5000 == 0:
                 print '{} elements, {} tasks left...'.format(len(self.elements), len(self.element_tasks))
             
-            for direction in DIRECTION_RANGE:
+            for direction in NavElement.DIR_RANGE:
                 pos.copy_from(element.pos)
-                if direction == DIRECTION_UP:
+                if direction == NavElement.DIR_UP:
                     pos.y -= 1
-                elif direction == DIRECTION_RIGHT:
+                elif direction == NavElement.DIR_RIGHT:
                     pos.x += 1
-                elif direction == DIRECTION_DOWN:
+                elif direction == NavElement.DIR_DOWN:
                     pos.y += 1
-                elif direction == DIRECTION_LEFT:
+                elif direction == NavElement.DIR_LEFT:
                     pos.x -= 1
                 
                 # See if an adjoining element already exists.
@@ -329,14 +328,14 @@ class NavGrid(object):
         
         # Set origin element jumping flags.
         if jump == True:
-            if direction == DIRECTION_UP:
-                element.flags |= FLAG_JUMP_NORTH
-            elif direction == DIRECTION_RIGHT:
-                element.flags |= FLAG_JUMP_EAST
-            elif direction == DIRECTION_DOWN:
-                element.flags |= FLAG_JUMP_SOUTH
-            elif direction == DIRECTION_LEFT:
-                element.flags |= FLAG_JUMP_WEST
+            if direction == NavElement.DIR_UP:
+                element.flags |= NavElement.FLAG_JUMP_NORTH
+            elif direction == NavElement.DIR_RIGHT:
+                element.flags |= NavElement.FLAG_JUMP_EAST
+            elif direction == NavElement.DIR_DOWN:
+                element.flags |= NavElement.FLAG_JUMP_SOUTH
+            elif direction == NavElement.DIR_LEFT:
+                element.flags |= NavElement.FLAG_JUMP_WEST
         
         # Drop to the lowest floor.
         check_pos.z = min(check_pos.z, state.floorz)
@@ -371,8 +370,8 @@ class NavGrid(object):
         # Set sector damage flag.
         if sector.damage > 0:
             if sector.damage <= 5:
-                element.flags |= FLAG_DAMAGE_LOW
+                element.flags |= NavElement.FLAG_DAMAGE_LOW
             elif sector.damage <= 10:
-                element.flags |= FLAG_DAMAGE_MEDIUM
+                element.flags |= NavElement.FLAG_DAMAGE_MEDIUM
             elif sector.damage >= 20:
-                element.flags |= FLAG_DAMAGE_HIGH
+                element.flags |= NavElement.FLAG_DAMAGE_HIGH

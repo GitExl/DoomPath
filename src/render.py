@@ -1,6 +1,7 @@
 from doom.map.objects import Linedef
 from nav import navconnection
-from nav.navenum import DIRECTION_RANGE, DIRECTION_UP, DIRECTION_RIGHT, DIRECTION_DOWN, DIRECTION_LEFT
+from nav.navconnection import NavConnection
+from nav.navelement import NavElement
 from util import rectangle
 import pygame
 
@@ -27,7 +28,7 @@ def render_connections(nav_mesh, surface, camera, mouse_pos):
     
     for area in nav_mesh.areas:
         for connection in area.connections:
-            if (connection.flags & navconnection.CONNECTION_FLAG_TELEPORTER) != 0:
+            if (connection.flags & NavConnection.FLAG_TELEPORTER) != 0:
                 c_rect.copy_from(connection.rect)
                 c_rect.flip_if_reversed()
                 
@@ -264,17 +265,17 @@ def render_navgrid(nav_grid, surface, camera, mouse_pos):
 
         pygame.draw.rect(surface, color, rect, 1)
         
-        for direction in DIRECTION_RANGE:
+        for direction in NavElement.DIR_RANGE:
             if element.elements[direction] is not None:
                 start = (rect.left + (nav_grid.element_size * camera.zoom) / 2, rect.top + (nav_grid.element_size * camera.zoom) / 2)
                 
-                if direction == DIRECTION_UP:
+                if direction == NavElement.DIR_UP:
                     end = (start[0], start[1] - (nav_grid.element_size * camera.zoom))
-                elif direction == DIRECTION_RIGHT:
+                elif direction == NavElement.DIR_RIGHT:
                     end = (start[0] + (nav_grid.element_size * camera.zoom), start[1])
-                elif direction == DIRECTION_DOWN:
+                elif direction == NavElement.DIR_DOWN:
                     end = (start[0], start[1] + (nav_grid.element_size * camera.zoom))
-                elif direction == DIRECTION_LEFT:
+                elif direction == NavElement.DIR_LEFT:
                     end = (start[0] - (nav_grid.element_size * camera.zoom), start[1])
                     
                 pygame.draw.line(surface, color, start, end, 1)

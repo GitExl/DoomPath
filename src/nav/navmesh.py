@@ -3,7 +3,7 @@ from doom.plane import Plane
 from nav import navconnection
 from nav.navarea import NavArea
 from nav.navconnection import NavConnection
-from nav.navenum import *
+from nav.navelement import NavElement
 from util.rectangle import Rectangle
 from util.vector import Vector2
 import struct
@@ -156,7 +156,7 @@ class NavMesh(object):
                 connection.area_a = area
                 connection.area_b = target_area
                 connection.linedef = teleporter.source_line
-                connection.flags = navconnection.CONNECTION_FLAG_AB | navconnection.CONNECTION_FLAG_TELEPORTER
+                connection.flags = NavConnection.FLAG_AB | NavConnection.FLAG_TELEPORTER
                 
                 area.connections.append(connection)
             
@@ -196,7 +196,7 @@ class NavMesh(object):
                
         for area in self.areas:
             for element in area.elements:
-                for direction in DIRECTION_RANGE:
+                for direction in NavElement.DIR_RANGE:
                     if element.connection[direction] is not None:
                         continue
                 
@@ -219,7 +219,7 @@ class NavMesh(object):
                     for c_connection in other_area.connections:
                         if c_connection.area_b == area and c_connection.rect == rect:
                             connection = c_connection
-                            connection.flags |= navconnection.CONNECTION_FLAG_BA
+                            connection.flags |= NavConnection.FLAG_BA
                             break
 
                     # Create new connection object if needed.
@@ -227,7 +227,7 @@ class NavMesh(object):
                         count += 1
                         
                         connection = navconnection.NavConnection()
-                        connection.flags = navconnection.CONNECTION_FLAG_AB
+                        connection.flags = NavConnection.FLAG_AB
                         connection.area_a = area
                         connection.area_b = other_area
                         connection.rect.copy_from(rect)
@@ -311,22 +311,22 @@ class NavMesh(object):
     def area_merge_filter(self, area):
         pos = Vector2()
         
-        for side in SIDE_RANGE:
+        for side in NavArea.SIDE_RANGE:
             x1, y1, x2, y2 = area.get_side(side)
             
             # Select a grid element on the current side.
-            if side == SIDE_TOP:
+            if side == NavArea.SIDE_TOP:
                 pos.set(x1 + 1, y1 + 1)
-                direction = DIRECTION_UP
-            elif side == SIDE_RIGHT:
+                direction = NavElement.DIR_UP
+            elif side == NavArea.SIDE_RIGHT:
                 pos.set(x2 - 1, y2 - 1)
-                direction = DIRECTION_RIGHT
-            elif side == SIDE_BOTTOM:
+                direction = NavElement.DIR_RIGHT
+            elif side == NavArea.SIDE_BOTTOM:
                 pos.set(x2 - 1, y2 - 1)
-                direction = DIRECTION_DOWN
-            elif side == SIDE_LEFT:
+                direction = NavElement.DIR_DOWN
+            elif side == NavArea.SIDE_LEFT:
                 pos.set(x1 + 1, y1 + 1)
-                direction = DIRECTION_LEFT
+                direction = NavElement.DIR_LEFT
             ex, ey = self.nav_grid.map_to_element(pos)
             
             # Find the element in this area.
@@ -351,7 +351,7 @@ class NavMesh(object):
                 continue
             
             # See if the two areas have matching opposite sides.
-            merge_x1, merge_y1, merge_x2, merge_y2 = merge_area.get_side(SIDE_RANGE_OPPOSITE[side])
+            merge_x1, merge_y1, merge_x2, merge_y2 = merge_area.get_side(NavArea.SIDE_RANGE_OPPOSITE[side])
             if x1 != merge_x1 or y1 != merge_y1 or x2 != merge_x2 or y2 != merge_y2:
                 continue
             
@@ -359,16 +359,16 @@ class NavMesh(object):
             merge_rect = merge_area.rect
             
             # Get the size of the new merged area.
-            if side == SIDE_TOP:
+            if side == NavArea.SIDE_TOP:
                 width = rect.get_width()
                 height = rect.bottom - merge_rect.top 
-            elif side == SIDE_RIGHT:
+            elif side == NavArea.SIDE_RIGHT:
                 width = merge_rect.right - rect.left
                 height = rect.get_height()
-            elif side == SIDE_BOTTOM:
+            elif side == NavArea.SIDE_BOTTOM:
                 width = rect.get_width()
                 height = merge_rect.bottom - rect.top
-            elif side == SIDE_LEFT:
+            elif side == NavArea.SIDE_LEFT:
                 width = rect.right - merge_rect.left
                 height = rect.get_height()
                 
@@ -377,13 +377,13 @@ class NavMesh(object):
                 continue
             
             # Merge the area rectangle.
-            if side == SIDE_TOP:
+            if side == NavArea.SIDE_TOP:
                 merge_rect.set(merge_rect.left, merge_rect.top, merge_rect.right, rect.bottom)
-            elif side == SIDE_RIGHT:
+            elif side == NavArea.SIDE_RIGHT:
                 merge_rect.set(rect.left, merge_rect.top, merge_rect.right, merge_rect.bottom)
-            elif side == SIDE_BOTTOM:
+            elif side == NavArea.SIDE_BOTTOM:
                 merge_rect.set(merge_rect.left, rect.top, merge_rect.right, merge_rect.bottom)
-            elif side == SIDE_LEFT:
+            elif side == NavArea.SIDE_LEFT:
                 merge_rect.set(merge_rect.left, merge_rect.top, rect.right, merge_rect.bottom)
                 
             # Merge the area element lists.
@@ -423,9 +423,9 @@ class NavMesh(object):
                 yelement.area = area
                 area.elements.append(yelement)
                 
-                yelement = yelement.elements[DIRECTION_DOWN]
+                yelement = yelement.elements[NavElement.DIR_DOWN]
             
-            xelement = xelement.elements[DIRECTION_RIGHT]
+            xelement = xelement.elements[NavElement.DIR_RIGHT]
         
         return area
     
@@ -439,11 +439,11 @@ class NavMesh(object):
         start_element = element
         cx = 1
         while cx < size:
-            start_element = start_element.elements[DIRECTION_RIGHT]
+            start_element = start_element.elements[NavElement.DIR_RIGHT]
             if start_element is None:
                 return False
             
-            start_element = start_element.elements[DIRECTION_DOWN]
+            start_element = start_element.elements[NavElement.DIR_DOWN]
             if start_element is None:
                 return False
             
@@ -461,10 +461,10 @@ class NavMesh(object):
                     return False
                 
                 cy -= 1
-                yelement = yelement.elements[DIRECTION_UP]
+                yelement = yelement.elements[NavElement.DIR_UP]
                 
             cx -= 1
-            xelement = xelement.elements[DIRECTION_LEFT]
+            xelement = xelement.elements[NavElement.DIR_LEFT]
 
         return True
     
