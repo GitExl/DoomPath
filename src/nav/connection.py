@@ -2,7 +2,7 @@ from util.rectangle import Rectangle
 import math
 
 
-class NavConnection(object):
+class Connection(object):
     """
     A connection between two navigation areas.
     """

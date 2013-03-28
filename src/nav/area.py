@@ -1,7 +1,7 @@
 from util.rectangle import Rectangle
 
 
-class NavArea(object):
+class Area(object):
     """
     A navigation area.
     
@@ -64,13 +64,13 @@ class NavArea(object):
         Returns the start and end coordinates of a side of this area.
         """
         
-        if side == NavArea.SIDE_TOP:
+        if side == Area.SIDE_TOP:
             return self.rect.left, self.rect.top, self.rect.right, self.rect.top
-        elif side == NavArea.SIDE_RIGHT:
+        elif side == Area.SIDE_RIGHT:
             return self.rect.right, self.rect.top, self.rect.right, self.rect.bottom            
-        elif side == NavArea.SIDE_BOTTOM:
+        elif side == Area.SIDE_BOTTOM:
             return self.rect.left, self.rect.bottom, self.rect.right, self.rect.bottom
-        elif side == NavArea.SIDE_LEFT:
+        elif side == Area.SIDE_LEFT:
             return self.rect.left, self.rect.top, self.rect.left, self.rect.bottom
         
         return None

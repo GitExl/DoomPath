@@ -1,7 +1,7 @@
 from util.vector import Vector3
 
 
-class NavElement(object):
+class Element(object):
     """
     A single square grid element on a map that the player can stand at.
     """

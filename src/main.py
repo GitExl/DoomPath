@@ -1,7 +1,7 @@
 from doom import wad
 from doom.map.data import MapData
-from nav import navgrid
-from nav.navmesh import NavMesh
+from nav.grid import Grid
+from nav.mesh import Mesh
 from util.vector import Vector2, Vector3
 import cProfile
 import camera
@@ -47,9 +47,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/doom1.wad'
-        source_map = 'E1M3'
-        dest_mesh = 'test/doom_e1m3.dpm'
+        source_wad = 'test/test.wad'
+        source_map = 'MAP01'
+        dest_mesh = 'test/test_map01.dpm'
         resolution = 1
         configuration = None
         max_area_size = 256
@@ -77,7 +77,7 @@ class Loop(object):
         self.map_data.setup(self.config)
         
         print 'Creating navigation grid...'
-        self.nav_grid = navgrid.NavGrid(self.map_data, self.config, resolution)
+        self.nav_grid = Grid(self.map_data, self.config, resolution)
         
         print 'Placing starting elements...'
         self.nav_grid.place_starts()
@@ -86,7 +86,7 @@ class Loop(object):
         self.nav_grid.create_walkable_elements(self.config)
             
         print 'Generating navigation mesh...'
-        self.nav_mesh = NavMesh(self.map_data, self.config, self.nav_grid)
+        self.nav_mesh = Mesh(self.map_data, self.config, self.nav_grid)
         self.nav_mesh.create_from_grid(max_area_size, max_area_size_merged)
         self.nav_mesh.write(dest_mesh)
         self.nav_mesh.read(dest_mesh)
@@ -180,7 +180,7 @@ class Loop(object):
         
         radius = self.config.player_radius
         height = self.config.player_height
-        collision, state = self.nav_grid.walker.check_position(pos, radius, height)
+        collision, state = self.nav_grid.collider.check_position(pos, radius, height)
         
         if collision == False:
             color = COLOR_COLLISION_BOX

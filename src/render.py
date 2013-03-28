@@ -1,7 +1,6 @@
 from doom.map.objects import Linedef
-from nav import navconnection
-from nav.navconnection import NavConnection
-from nav.navelement import NavElement
+from nav.connection import Connection
+from nav.element import Element
 from util import rectangle
 import pygame
 
@@ -28,7 +27,7 @@ def render_connections(nav_mesh, surface, camera, mouse_pos):
     
     for area in nav_mesh.areas:
         for connection in area.connections:
-            if (connection.flags & NavConnection.FLAG_TELEPORTER) != 0:
+            if (connection.flags & Connection.FLAG_TELEPORTER) != 0:
                 c_rect.copy_from(connection.rect)
                 c_rect.flip_if_reversed()
                 
@@ -265,17 +264,17 @@ def render_navgrid(nav_grid, surface, camera, mouse_pos):
 
         pygame.draw.rect(surface, color, rect, 1)
         
-        for direction in NavElement.DIR_RANGE:
+        for direction in Element.DIR_RANGE:
             if element.elements[direction] is not None:
                 start = (rect.left + (nav_grid.element_size * camera.zoom) / 2, rect.top + (nav_grid.element_size * camera.zoom) / 2)
                 
-                if direction == NavElement.DIR_UP:
+                if direction == Element.DIR_UP:
                     end = (start[0], start[1] - (nav_grid.element_size * camera.zoom))
-                elif direction == NavElement.DIR_RIGHT:
+                elif direction == Element.DIR_RIGHT:
                     end = (start[0] + (nav_grid.element_size * camera.zoom), start[1])
-                elif direction == NavElement.DIR_DOWN:
+                elif direction == Element.DIR_DOWN:
                     end = (start[0], start[1] + (nav_grid.element_size * camera.zoom))
-                elif direction == NavElement.DIR_LEFT:
+                elif direction == Element.DIR_LEFT:
                     end = (start[0] - (nav_grid.element_size * camera.zoom), start[1])
                     
                 pygame.draw.line(surface, color, start, end, 1)

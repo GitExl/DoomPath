@@ -5,30 +5,48 @@ import config
 
 
 class PositionState(object):
+    """
+    Keeps track of the collider's current test state.
+    """
         
     def __init__(self):
+        # Current position.
         self.pos = Vector3()
+        
+        # Current bounding box to test.
         self.bbox = Rectangle()
         
         self.reset(self.pos, 0, 0)
         
 
     def reset(self, pos, radius, height):
-        self.pos.copy_from(pos)
-        
+        # Size to test.
         self.radius = radius
         self.height = height
         
+        # Outermost z coordinates.
         self.floorz = -0x8000
         self.ceilz = 0x8000
         
+        # Blocked by a linedef.
         self.blockline = False
+        
+        # Blocked by a thing.
         self.blockthing = False
+        
+        # Blocked by a steep slope.
         self.steep = False
+        
+        # This position can move during gameplay (due to sectors).
         self.moves = False
+        
+        # This position's special sector index.
         self.special_sector = None
+        
+        # This position's floor plane.
         self.floor_plane = None
 
+        self.pos.copy_from(pos)
         self.bbox.set(
             pos.x - radius,
             pos.y - radius,
@@ -37,17 +55,32 @@ class PositionState(object):
         )
         
 
-class Walker(object):
+class Collider(object):
+    """
+    Performs collision tests on a Doom map.
+    """
     
     def __init__(self, map_data, config):
         self.map_data = map_data
         self.config = config
         self.state = PositionState()
         
+        # Temporary rectangle to avoid excessive allocation.
         self.temp_rect = Rectangle()
         
         
     def get_bb_floor_z(self, pos, radius, sector_index=None):
+        """
+        Returns the outermost floor z coordinate in a bounding box.
+        
+        @param pos: the position to test.
+        @param radius: the radius of the bounding box.
+        @param sector_index: the sector index to test in. If this is None, each coordinate will be tested in it's
+                             own sector.
+        
+        @return: a Z height.
+        """ 
+        
         if sector_index is not None:
             floorz = self.map_data.get_sector_floor_z(sector_index, pos.x - radius, pos.y)
             floorz = max(floorz, self.map_data.get_sector_floor_z(sector_index, pos.x + radius, pos.y))
@@ -62,43 +95,65 @@ class Walker(object):
         return floorz
     
     
-    def get_bb_ceil_z(self, pos, radius, sector_index=None):
+    def get_bb_ceil_z(self, pos2, radius, sector_index=None):
+        """
+        Returns the outermost ceiling z coordinate in a bounding box.
+        
+        @param pos: the position to test.
+        @param radius: the radius of the bounding box.
+        @param sector_index: the sector index to test in. If this is None, each coordinate will be tested in it's
+                             own sector.
+        
+        @return: a Z height.
+        """ 
+        
         if sector_index is not None:
-            ceilz = self.map_data.get_sector_ceil_z(sector_index, pos.x - radius, pos.y)
-            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos.x + radius, pos.y))
-            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos.x - radius, pos.y + radius))
-            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos.x + radius, pos.y - radius))
+            ceilz = self.map_data.get_sector_ceil_z(sector_index, pos2.x - radius, pos2.y)
+            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos2.x + radius, pos2.y))
+            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos2.x - radius, pos2.y + radius))
+            ceilz = min(ceilz, self.map_data.get_sector_ceil_z(sector_index, pos2.x + radius, pos2.y - radius))
         else:
-            ceilz = self.map_data.get_ceil_z(pos.x - radius, pos.y)
-            ceilz = min(ceilz, self.map_data.get_ceil_z(pos.x + radius, pos.y))
-            ceilz = min(ceilz, self.map_data.get_ceil_z(pos.x - radius, pos.y + radius))
-            ceilz = min(ceilz, self.map_data.get_ceil_z(pos.x + radius, pos.y - radius))
+            ceilz = self.map_data.get_ceil_z(pos2.x - radius, pos2.y)
+            ceilz = min(ceilz, self.map_data.get_ceil_z(pos2.x + radius, pos2.y))
+            ceilz = min(ceilz, self.map_data.get_ceil_z(pos2.x - radius, pos2.y + radius))
+            ceilz = min(ceilz, self.map_data.get_ceil_z(pos2.x + radius, pos2.y - radius))
         
         return ceilz
     
         
-    def check_position(self, pos, radius, height):
+    def check_position(self, pos3, radius, height):
+        """
+        Check a position for collision.
+        
+        @param pos3: the 3d position to test.
+        @param radius: the radius to test.
+        @param height: the height of the test.   
+        """
+        
         state = self.state
-        state.reset(pos, radius, height)
+        state.reset(pos3, radius, height)
                 
-        subsector_index = self.map_data.point_in_subsector(pos.x, pos.y)
+        # Select a starting sector.
+        subsector_index = self.map_data.point_in_subsector(pos3.x, pos3.y)
         state.sector_index = self.map_data.subsectors[subsector_index].sector
         state.base_sector_index = state.sector_index
             
         self.check_sector_position(state)
         
+        # Set the blockmap region to test in.
         x1, y1 = self.map_data.blockmap.map_to_blockmap(state.bbox.p1)
         x2, y2 = self.map_data.blockmap.map_to_blockmap(state.bbox.p2)
         rect = self.temp_rect
         rect.set(x1, y1, x2, y2)
         
+        # Get all testable items in a region and test against them.
         linedefs, things = self.map_data.blockmap.get_region(rect)
         if len(linedefs) > 0:
             linedefs = set(linedefs)
-            self.check_block_linedefs(state, linedefs)
+            self.check_linedefs(state, linedefs)
         if len(things) > 0:
             things = set(things)
-            self.check_block_things(state, things)
+            self.check_things(state, things)
 
         # Blocked by single-sided line or thing.
         if state.blockline == True or state.blockthing == True:
@@ -118,7 +173,11 @@ class Walker(object):
         return collision, state
     
     
-    def check_block_linedefs(self, state, linedefs):
+    def check_linedefs(self, state, linedefs):
+        """
+        Check linedefs for collision and update state.
+        """
+        
         for line_index in linedefs:
             linedef = self.map_data.linedefs[line_index]
             lx1 = linedef.vertex1.x
@@ -156,7 +215,11 @@ class Walker(object):
                     self.check_sector_position(state)
 
 
-    def check_block_things(self, state, things):
+    def check_things(self, state, things):
+        """
+        Check things for collision and update state.
+        """
+        
         for thing_index in things:
             thing = self.map_data.things[thing_index]
             thing_type = thing.doomid
@@ -176,9 +239,9 @@ class Walker(object):
                 thing_height = thing_def.height
                 thing_flags = thing_def.flags
                 
+            # Test against thing rectangle.
             thing_x = thing.x
             thing_y = thing.y
-
             rect = self.temp_rect
             rect.set(
                 thing_x - thing_radius,
@@ -212,6 +275,10 @@ class Walker(object):
 
     
     def check_sector_position(self, state):
+        """
+        Check against the state's current sector.
+        """
+        
         sector = self.map_data.sectors[state.sector_index]
 
         # Find the floor and ceiling sectors to collide with.

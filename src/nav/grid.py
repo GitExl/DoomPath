@@ -1,32 +1,32 @@
 from doom.map.objects import Sector, Teleporter
-from nav.navelement import NavElement
-from nav.walker import Walker
+from nav.collider import Collider
+from nav.element import Element
 from util.vector import Vector3, Vector2
 import struct
 
 
-# Grid file structures.
-GRID_FILE_ID = 'DPGRID'
-GRID_FILE_VERSION = 1
-GRID_FILE_HEADER = struct.Struct('<6sII')
-GRID_FILE_ELEMENT = struct.Struct('<hhhiiiiiii')
-
-# Grid collision reasons.
-REASON_NONE = 0
-REASON_BLOCK_LINE = 1
-REASON_SLOPE_TOO_STEEP = 2
-REASON_CANNOT_FIT = 3
-REASON_LINE_BLOCK = 4
-REASON_THING_BLOCK = 5
-REASON_IGNORE = 6
-REASON_TOO_HIGH = 7
-REASON_LEAK = 8
-
-
-class NavGrid(object):
+class Grid(object):
     """
     A grid of elements, describing where a player can walk on the map.
     """
+    
+    # Grid file structures.
+    FILE_ID = 'DPGRID'
+    FILE_VERSION = 1
+    FILE_HEADER = struct.Struct('<6sII')
+    FILE_ELEMENT = struct.Struct('<hhhiiiiiii')
+    
+    # Grid collision reasons.
+    REASON_NONE = 0
+    REASON_BLOCK_LINE = 1
+    REASON_SLOPE_TOO_STEEP = 2
+    REASON_CANNOT_FIT = 3
+    REASON_LINE_BLOCK = 4
+    REASON_THING_BLOCK = 5
+    REASON_IGNORE = 6
+    REASON_TOO_HIGH = 7
+    REASON_LEAK = 8
+    
     
     def __init__(self, map_data, config, resolution):
         self.config = config
@@ -40,7 +40,7 @@ class NavGrid(object):
         self.size = Vector2(self.map_data.size.x / self.element_size, self.map_data.size.y / self.element_size)
         
         # Collision detection handler.
-        self.walker = Walker(map_data, config)
+        self.collider = Collider(map_data, config)
         
         # All elements in this grid.
         self.elements = []
@@ -58,13 +58,13 @@ class NavGrid(object):
         self.check_pos = Vector3()
         
         
-    def add_walkable_element(self, pos):
+    def add_walkable_element(self, pos2):
         """
         Adds a new element to the grid at a point where the player can stand.
         """
         
-        x, y = self.map_to_element(pos)
-        element = self.add_element_xyz(x, y, pos.z)
+        x, y = self.map_to_element(pos2)
+        element = self.add_element_xyz(x, y, pos2.z)
         
         # Set the element's sector-related data.
         sector_index = self.map_data.get_sector(x, y)
@@ -82,10 +82,10 @@ class NavGrid(object):
         """
         Adds a new element at a specific location in the grid.
         
-        @return: the new NavElement object.
+        @return: the new Element object.
         """
         
-        element = NavElement(x, y, z)
+        element = Element(x, y, z)
 
         element_hash = x + (y * self.size.x)
         elements = self.element_hash.get(element_hash)
@@ -116,7 +116,7 @@ class NavGrid(object):
             pos.y = thing.y
             pos.z = self.map_data.get_floor_z(pos.x, pos.y)
             
-            collision, _ = self.walker.check_position(pos, self.config.player_radius, self.config.player_height)
+            collision, _ = self.collider.check_position(pos, self.config.player_radius, self.config.player_height)
             if collision == True:
                 print 'Thing at {} has no room to spawn, ignoring.'.format(pos)
                 continue
@@ -135,7 +135,7 @@ class NavGrid(object):
                 dest.x, dest.y = self.map_data.get_line_center(teleporter.dest_line)
             dest.z = self.map_data.get_floor_z(dest.x, dest.y)
             
-            collision, _ = self.walker.check_position(dest, self.config.player_radius, self.config.player_height)
+            collision, _ = self.collider.check_position(dest, self.config.player_radius, self.config.player_height)
             if collision == True:
                 print 'Teleporter destination at {} has no room to spawn, ignoring.'.format(dest)
                 continue
@@ -166,7 +166,7 @@ class NavGrid(object):
                 
         # Remove the now invalid element connections.
         for element in self.elements:
-            for direction in NavElement.DIR_RANGE:
+            for direction in Element.DIR_RANGE:
                 if element.elements[direction] in self.element_prune:
                     element.elements[direction] = None
         
@@ -183,7 +183,7 @@ class NavGrid(object):
             element.index = index
         
         with open(filename, 'wb') as f:            
-            header = GRID_FILE_HEADER.pack(GRID_FILE_ID, GRID_FILE_VERSION, len(self.elements))
+            header = Grid.FILE_HEADER.pack(Grid.FILE_ID, Grid.FILE_VERSION, len(self.elements))
             f.write(header)
 
             indices = [0] * 4            
@@ -194,7 +194,7 @@ class NavGrid(object):
                     plane_hash = hash(element.plane)
             
                 # Gather indices for each element's direction and write it as a single struct.    
-                for direction in NavElement.DIR_RANGE:
+                for direction in Element.DIR_RANGE:
                     if element.elements[direction] is None:
                         indices[direction] = -1
                     else:
@@ -205,7 +205,7 @@ class NavGrid(object):
                     else:
                         special_sector = element.special_sector
                         
-                element_data = GRID_FILE_ELEMENT.pack(element.pos.x, element.pos.y, element.pos.z, plane_hash, special_sector, element.flags, indices[0], indices[1], indices[2], indices[3])
+                element_data = self.FILE_ELEMENT.pack(element.pos.x, element.pos.y, element.pos.z, plane_hash, special_sector, element.flags, indices[0], indices[1], indices[2], indices[3])
                 f.write(element_data)
            
                 
@@ -215,20 +215,31 @@ class NavGrid(object):
         """
         
         with open(filename, 'rb') as f:
-            file_id, version, element_count = GRID_FILE_HEADER.unpack(f.read(GRID_FILE_HEADER.size))
+            file_id, version, element_count = Grid.FILE_HEADER.unpack(f.read(Grid.FILE_HEADER.size))
             
             # Validate header.
-            if file_id != GRID_FILE_ID:
+            if file_id != Grid.FILE_ID:
                 print 'Invalid grid file.'
                 return
-            if version != GRID_FILE_VERSION:
+            if version != Grid.FILE_VERSION:
                 print 'Unsupported grid version {}'.format(version)
                 return
             
             self.elements = []
             for _ in range(element_count):
-                element = NavElement(0, 0, 0)
-                element.pos.x, element.pos.y, element.pos.z, plane_hash, element.special_sector, element.flags, element.elements[0], element.elements[1], element.elements[2], element.elements[3] = GRID_FILE_ELEMENT.unpack(f.read(GRID_FILE_ELEMENT.size))
+                element = Element(0, 0, 0)
+                data = Grid.FILE_ELEMENT.unpack(f.read(Grid.FILE_ELEMENT.size))
+                
+                element.pos.x = data[0]
+                element.pos.y = data[1]
+                element.pos.z = data[2]
+                plane_hash = data[3]
+                element.special_sector = data[4]
+                element.flags = data[5]
+                element.elements[0] = data[6]
+                element.elements[1] = data[7]
+                element.elements[2] = data[8]
+                element.elements[3] = data[9]
                 
                 # Find matching planes in sectors.
                 for sector in self.map_data.sectors:
@@ -245,7 +256,7 @@ class NavGrid(object):
 
         # Set element references from stored indices.
         for element in self.elements:
-            for direction in NavElement.DIR_RANGE:
+            for direction in Element.DIR_RANGE:
                 if element.elements[direction] != -1:
                     element.elements[direction] = self.elements[element.elements[direction]]
                 else:
@@ -319,18 +330,18 @@ class NavGrid(object):
                 print '{} elements, {} tasks left...'.format(len(self.elements), len(self.element_tasks))
             
             # Test each direction for walkability.
-            for direction in NavElement.DIR_RANGE:
+            for direction in Element.DIR_RANGE:
                 pos.x = element.pos.x
                 pos.y = element.pos.y
                 pos.z = element.pos.z
                 
-                if direction == NavElement.DIR_UP:
+                if direction == Element.DIR_UP:
                     pos.y -= 1
-                elif direction == NavElement.DIR_RIGHT:
+                elif direction == Element.DIR_RIGHT:
                     pos.x += 1
-                elif direction == NavElement.DIR_DOWN:
+                elif direction == Element.DIR_DOWN:
                     pos.y += 1
-                elif direction == NavElement.DIR_LEFT:
+                elif direction == Element.DIR_LEFT:
                     pos.x -= 1
                 
                 # See if an adjoining element already exists.
@@ -339,7 +350,7 @@ class NavGrid(object):
                     
                     # If not, test if an element can be placed there.
                     reason, new_element = self.test_element(pos, direction, element)
-                    if reason != REASON_NONE:
+                    if reason != Grid.REASON_NONE:
                         continue
                     
                 element.elements[direction] = new_element
@@ -357,27 +368,27 @@ class NavGrid(object):
         map_x, map_y = self.element_to_map(pos3)
         if map_x < self.map_data.min.x or map_x > self.map_data.max.x or map_y < self.map_data.min.y or map_y > self.map_data.max.y:
             print 'Grid leak at ({}, {})'.format(map_x, map_y)
-            return REASON_LEAK, None
+            return Grid.REASON_LEAK, None
         
         # Test collision.
         check_pos = self.check_pos
         check_pos.x = map_x
         check_pos.y = map_y
         check_pos.z = pos3.z
-        collision, state = self.walker.check_position(check_pos, self.element_size, self.element_height)
+        collision, state = self.collider.check_position(check_pos, self.element_size, self.element_height)
         
         # Ignore sectors flagged as such.
         if state.special_sector is not None:
             sector = self.map_data.sectors[state.special_sector]
             if (sector.flags & Sector.FLAG_IGNORE) != 0:
-                return REASON_IGNORE, None
+                return Grid.REASON_IGNORE, None
         
         jump = False
         if collision == True:
             
             # Blocked by impassable line.
             if state.blockline == True:
-                return REASON_BLOCK_LINE, None
+                return Grid.REASON_BLOCK_LINE, None
 
             elif state.floorz > check_pos.z:
                 
@@ -392,11 +403,11 @@ class NavGrid(object):
                     
                 # If the sector moves during the game, ignore any higher height difference.
                 elif state.moves == False:
-                    return REASON_TOO_HIGH, None
+                    return Grid.REASON_TOO_HIGH, None
                 
         # Steep slopes cannot be walked up, only down.
         if state.steep == True and state.floorz > element.pos.z:
-            return REASON_SLOPE_TOO_STEEP, None
+            return Grid.REASON_SLOPE_TOO_STEEP, None
         
         # Snap to moving sector floor.
         if state.moves == True:
@@ -404,21 +415,21 @@ class NavGrid(object):
         
         # Set origin element jumping flags.
         if jump == True:
-            if direction == NavElement.DIR_UP:
-                element.flags |= NavElement.FLAG_JUMP_NORTH
-            elif direction == NavElement.DIR_RIGHT:
-                element.flags |= NavElement.FLAG_JUMP_EAST
-            elif direction == NavElement.DIR_DOWN:
-                element.flags |= NavElement.FLAG_JUMP_SOUTH
-            elif direction == NavElement.DIR_LEFT:
-                element.flags |= NavElement.FLAG_JUMP_WEST
+            if direction == Element.DIR_UP:
+                element.flags |= Element.FLAG_JUMP_NORTH
+            elif direction == Element.DIR_RIGHT:
+                element.flags |= Element.FLAG_JUMP_EAST
+            elif direction == Element.DIR_DOWN:
+                element.flags |= Element.FLAG_JUMP_SOUTH
+            elif direction == Element.DIR_LEFT:
+                element.flags |= Element.FLAG_JUMP_WEST
         
         # Drop to the lowest floor.
         check_pos.z = min(check_pos.z, state.floorz)
         
         # Player cannot fit in the sector.
         if (check_pos.z < state.floorz or check_pos.z + self.element_height > state.ceilz) and (state.moves == False or state.blockthing == True): 
-            return REASON_CANNOT_FIT, None
+            return Grid.REASON_CANNOT_FIT, None
                               
         # See if an element exists in the updated location.
         new_pos = self.map_to_element(check_pos)
@@ -437,7 +448,7 @@ class NavGrid(object):
             
             self.element_tasks.append(new_element)
             
-        return REASON_NONE, new_element
+        return Grid.REASON_NONE, new_element
             
             
     def set_element_properties(self, sector_index, element):
@@ -450,8 +461,8 @@ class NavGrid(object):
         # Set sector damage flag.
         if sector.damage > 0:
             if sector.damage <= 5:
-                element.flags |= NavElement.FLAG_DAMAGE_LOW
+                element.flags |= Element.FLAG_DAMAGE_LOW
             elif sector.damage <= 10:
-                element.flags |= NavElement.FLAG_DAMAGE_MEDIUM
+                element.flags |= Element.FLAG_DAMAGE_MEDIUM
             elif sector.damage >= 20:
-                element.flags |= NavElement.FLAG_DAMAGE_HIGH
+                element.flags |= Element.FLAG_DAMAGE_HIGH
