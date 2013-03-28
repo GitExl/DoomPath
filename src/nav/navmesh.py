@@ -41,8 +41,8 @@ class NavMesh(object):
         grid_area = Rectangle()
         grid_area.left = self.nav_grid.map_data.min.x / self.nav_grid.element_size
         grid_area.top = self.nav_grid.map_data.min.y / self.nav_grid.element_size
-        grid_area.right = grid_area.left + self.nav_grid.width
-        grid_area.bottom = grid_area.top + self.nav_grid.height
+        grid_area.right = grid_area.left + self.nav_grid.size.x
+        grid_area.bottom = grid_area.top + self.nav_grid.size.y
         
         min_side = self.max_size_elements
         while min_side > 0:
@@ -277,7 +277,7 @@ class NavMesh(object):
         add_area = self.add_area
         areas = self.areas
         element_hash = self.nav_grid.element_hash
-        grid_width = self.nav_grid.width
+        grid_width = self.nav_grid.size.x
 
         x = grid_area.left
         y = grid_area.top

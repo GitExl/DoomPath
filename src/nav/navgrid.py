@@ -1,15 +1,17 @@
 from doom.map.objects import Sector, Teleporter
 from nav.navelement import NavElement
 from nav.walker import Walker
-from util.vector import Vector3
+from util.vector import Vector3, Vector2
 import struct
 
 
+# Grid file structures.
 GRID_FILE_ID = 'DPGRID'
 GRID_FILE_VERSION = 1
 GRID_FILE_HEADER = struct.Struct('<6sII')
 GRID_FILE_ELEMENT = struct.Struct('<hhhiiiiiii')
 
+# Grid collision reasons.
 REASON_NONE = 0
 REASON_BLOCK_LINE = 1
 REASON_SLOPE_TOO_STEEP = 2
@@ -20,59 +22,72 @@ REASON_IGNORE = 6
 REASON_TOO_HIGH = 7
 REASON_LEAK = 8
 
-reason_text = {
-    REASON_NONE: 'None',
-    REASON_BLOCK_LINE: 'Blocked by line',
-    REASON_SLOPE_TOO_STEEP: 'Slope is too steep',
-    REASON_CANNOT_FIT: 'Cannot fit',
-    REASON_LINE_BLOCK: 'Blocked by line',
-    REASON_THING_BLOCK: 'Blocked by thing',
-    REASON_IGNORE: 'Ignoring sector',
-    REASON_TOO_HIGH: 'Height difference too much',
-    REASON_LEAK: 'Grid leak'
-}
-
 
 class NavGrid(object):
+    """
+    A grid of elements, describing where a player can walk on the map.
+    """
     
     def __init__(self, map_data, config, resolution):
         self.config = config
         self.map_data = map_data
         
+        # The size of a single element.
         self.element_size = config.player_radius / resolution
         self.element_height = config.player_height
         
-        self.width = self.map_data.size.x/ self.element_size
-        self.height = self.map_data.size.y / self.element_size
+        # The dimensions of this grid.
+        self.size = Vector2(self.map_data.size.x / self.element_size, self.map_data.size.y / self.element_size)
         
+        # Collision detection handler.
         self.walker = Walker(map_data, config)
         
+        # All elements in this grid.
         self.elements = []
+        
+        # A list of elements that still need to be examined.
         self.element_tasks = []
+        
+        # A (x + y * width) positional dictionary with element lists.
         self.element_hash = {}
+        
+        # A set of elements that need to be pruned when calling remove_pruned_elements.
         self.element_prune = set()
         
+        # The map position currently being examined for collision.
         self.check_pos = Vector3()
         
         
     def add_walkable_element(self, pos):
-        element_pos = self.map_to_element(pos)
-        element = self.add_element_xyz(element_pos[0], element_pos[1], pos.z)
+        """
+        Adds a new element to the grid at a point where the player can stand.
+        """
         
-        sector_index = self.map_data.get_sector(element_pos[0], element_pos[1])
+        x, y = self.map_to_element(pos)
+        element = self.add_element_xyz(x, y, pos.z)
+        
+        # Set the element's sector-related data.
+        sector_index = self.map_data.get_sector(x, y)
         sector = self.map_data.sectors[sector_index]
-        self.set_element_extra(sector_index, element)
+        self.set_element_properties(sector_index, element)
         
         if (sector.flags & Sector.FLAG_MOVES) != 0:
             element.special_sector = sector_index
         
+        # Schedule for examination.
         self.element_tasks.append(element)
         
     
     def add_element_xyz(self, x, y, z):
+        """
+        Adds a new element at a specific location in the grid.
+        
+        @return: the new NavElement object.
+        """
+        
         element = NavElement(x, y, z)
 
-        element_hash = x + (y * self.width)
+        element_hash = x + (y * self.size.x)
         elements = self.element_hash.get(element_hash)
         if elements is None:
             elements = {}
@@ -85,12 +100,16 @@ class NavGrid(object):
     
     
     def place_starts(self):
-        # Create a list of things that grid generation starts at.
+        """
+        Place elements at starting thing locations.
+        """
+        
+        # Create a list of things that the grid generation starts at.
         start_things = []
         for thing_type in self.config.start_thing_types:
             start_things.extend(self.map_data.get_thing_list(thing_type))
         
-        # Add the initial things as initial elements to the nav grid.
+        # Add the initial things as initial elements to the navigation grid.
         for thing in start_things:
             pos = Vector3()
             pos.x = thing.x
@@ -114,7 +133,6 @@ class NavGrid(object):
             else:
                 dest = Vector3()
                 dest.x, dest.y = self.map_data.get_line_center(teleporter.dest_line)
-                
             dest.z = self.map_data.get_floor_z(dest.x, dest.y)
             
             collision, _ = self.walker.check_position(dest, self.config.player_radius, self.config.player_height)
@@ -128,12 +146,16 @@ class NavGrid(object):
     
     
     def remove_pruned_elements(self):
+        """
+        Remove elements from the elements_prune set from the element list.
+        """
+        
         # Filter prune elements from the element list.
         self.elements = filter(lambda element: element not in self.element_prune, self.elements)
         
         # Remove pruned elements from the element hash table.
         for element in self.element_prune:
-            element_hash = element.pos.x + (element.pos.y * self.width)
+            element_hash = element.pos.x + (element.pos.y * self.size.x)
             elements = self.element_hash.get(element_hash)
             if elements is None:
                 return
@@ -142,7 +164,7 @@ class NavGrid(object):
             if len(elements) == 0:
                 del self.element_hash[element_hash]
                 
-        # Remove now invalid element connections.
+        # Remove the now invalid element connections.
         for element in self.elements:
             for direction in NavElement.DIR_RANGE:
                 if element.elements[direction] in self.element_prune:
@@ -152,6 +174,11 @@ class NavGrid(object):
                 
     
     def write(self, filename):
+        """
+        Writes this grid to a file.
+        """
+        
+        # Assign element indices.
         for index, element in enumerate(self.elements):
             element.index = index
         
@@ -165,7 +192,8 @@ class NavGrid(object):
                     plane_hash = 0
                 else:
                     plane_hash = hash(element.plane)
-                
+            
+                # Gather indices for each element's direction and write it as a single struct.    
                 for direction in NavElement.DIR_RANGE:
                     if element.elements[direction] is None:
                         indices[direction] = -1
@@ -182,12 +210,17 @@ class NavGrid(object):
            
                 
     def read(self, filename):
+        """
+        Reads a grid file from disk.
+        """
+        
         with open(filename, 'rb') as f:
             file_id, version, element_count = GRID_FILE_HEADER.unpack(f.read(GRID_FILE_HEADER.size))
+            
+            # Validate header.
             if file_id != GRID_FILE_ID:
                 print 'Invalid grid file.'
                 return
-            
             if version != GRID_FILE_VERSION:
                 print 'Unsupported grid version {}'.format(version)
                 return
@@ -197,10 +230,13 @@ class NavGrid(object):
                 element = NavElement(0, 0, 0)
                 element.pos.x, element.pos.y, element.pos.z, plane_hash, element.special_sector, element.flags, element.elements[0], element.elements[1], element.elements[2], element.elements[3] = GRID_FILE_ELEMENT.unpack(f.read(GRID_FILE_ELEMENT.size))
                 
+                # Find matching planes in sectors.
                 for sector in self.map_data.sectors:
                     if hash(sector.floor_plane) == plane_hash:
                         element.plane = sector.floor_plane
                         break
+                else:
+                    print 'Cannot find sector floor plane at element coordinates {}.'.format(element.pos)
                 
                 if element.special_sector == -1:
                     element.special_sector = None
@@ -226,7 +262,12 @@ class NavGrid(object):
             
     
     def get_element_xyz(self, x, y, z):
-        element_hash = x + (y * self.width)
+        """
+        Returns an element at the x,y,z coordinates, or None if no element exists at
+        those coordinates.
+        """
+        
+        element_hash = x + (y * self.size.x)
         elements = self.element_hash.get(element_hash)
         if elements is not None:
             return elements.get(z)
@@ -234,22 +275,41 @@ class NavGrid(object):
         return None
     
     
-    def get_element_list(self, pos):
-        element_hash = pos.x + (pos.y * self.width)
+    def get_element_list(self, pos2):
+        """
+        Returns a list of elements at the 2d coordinates, or None if no list exists at
+        those coordinates.
+        """
+        
+        element_hash = pos2.x + (pos2.y * self.size.x)
         return self.element_hash.get(element_hash)
         
 
-    def map_to_element(self, pos):
-        return ((pos.x / self.element_size) + 1, (pos.y / self.element_size) + 1)
+    def map_to_element(self, pos2):
+        """
+        Maps a 2d map position to an element position.
+        """
+        
+        return ((pos2.x / self.element_size) + 1, (pos2.y / self.element_size) + 1)
     
     
-    def element_to_map(self, pos):
-        return ((pos.x * self.element_size) - (self.element_size / 2), (pos.y * self.element_size) - (self.element_size / 2))
+    def element_to_map(self, pos2):
+        """
+        Maps the center of a 2d element position to a map position.
+        """
+        
+        return ((pos2.x * self.element_size) - (self.element_size / 2), (pos2.y * self.element_size) - (self.element_size / 2))
 
     
     def create_walkable_elements(self, config):
+        """
+        Traverse the map, starting at already placed starting elements, and place elements where a
+        player can walk.
+        """
+        
         pos = Vector3()
         
+        # Keep testing elements until the task list is empty.
         while 1:
             if len(self.element_tasks) == 0:
                 break
@@ -258,8 +318,12 @@ class NavGrid(object):
             if len(self.elements) % 5000 == 0:
                 print '{} elements, {} tasks left...'.format(len(self.elements), len(self.element_tasks))
             
+            # Test each direction for walkability.
             for direction in NavElement.DIR_RANGE:
-                pos.copy_from(element.pos)
+                pos.x = element.pos.x
+                pos.y = element.pos.y
+                pos.z = element.pos.z
+                
                 if direction == NavElement.DIR_UP:
                     pos.y -= 1
                 elif direction == NavElement.DIR_RIGHT:
@@ -272,26 +336,37 @@ class NavGrid(object):
                 # See if an adjoining element already exists.
                 new_element = self.get_element_xyz(pos.x, pos.y, pos.z)
                 if new_element is None:
-                    reason, new_element = self.test_element(pos, direction, element, new_element)
+                    
+                    # If not, test if an element can be placed there.
+                    reason, new_element = self.test_element(pos, direction, element)
                     if reason != REASON_NONE:
                         continue
                     
                 element.elements[direction] = new_element
 
         
-    def test_element(self, pos, direction, element, new_element):
-        # See if an adjoining element can be placed.
-        map_x, map_y = self.element_to_map(pos)
+    def test_element(self, pos3, direction, element):
+        """
+        Test if an adjoining element can be placed at the specified location.
+        
+        @param pos: the 3d map position to test.
+        @param direction: the direction of the new element relative to it's previous element.
+        @param element: the previous origin element. 
+        """
+        
+        map_x, map_y = self.element_to_map(pos3)
         if map_x < self.map_data.min.x or map_x > self.map_data.max.x or map_y < self.map_data.min.y or map_y > self.map_data.max.y:
             print 'Grid leak at ({}, {})'.format(map_x, map_y)
             return REASON_LEAK, None
         
+        # Test collision.
         check_pos = self.check_pos
         check_pos.x = map_x
         check_pos.y = map_y
-        check_pos.z = pos.z
+        check_pos.z = pos3.z
         collision, state = self.walker.check_position(check_pos, self.element_size, self.element_height)
         
+        # Ignore sectors flagged as such.
         if state.special_sector is not None:
             sector = self.map_data.sectors[state.special_sector]
             if (sector.flags & Sector.FLAG_IGNORE) != 0:
@@ -299,7 +374,8 @@ class NavGrid(object):
         
         jump = False
         if collision == True:
-            # Blocked by impassible line.
+            
+            # Blocked by impassable line.
             if state.blockline == True:
                 return REASON_BLOCK_LINE, None
 
@@ -347,15 +423,15 @@ class NavGrid(object):
         # See if an element exists in the updated location.
         new_pos = self.map_to_element(check_pos)
         new_element = self.get_element_xyz(new_pos[0], new_pos[1], check_pos.z)
-        
         if new_element is None:
+            
             new_element = self.add_element_xyz(new_pos[0], new_pos[1], check_pos.z)
+            
+            # Set new element properties to match collision results.
             if state.special_sector is not None:
-                self.set_element_extra(state.special_sector, new_element)
-                
+                self.set_element_properties(state.special_sector, new_element)
             if state.floor_plane is not None:
-                new_element.plane = state.floor_plane
-                
+                new_element.plane = state.floor_plane                
             if state.moves == True:
                 new_element.special_sector = state.special_sector
             
@@ -364,7 +440,11 @@ class NavGrid(object):
         return REASON_NONE, new_element
             
             
-    def set_element_extra(self, sector_index, element):
+    def set_element_properties(self, sector_index, element):
+        """
+        Sets an element's properties (but not flags) from sector flags.
+        """
+        
         sector = self.map_data.sectors[sector_index]
                             
         # Set sector damage flag.

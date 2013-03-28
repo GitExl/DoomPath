@@ -56,10 +56,10 @@ class NavElement(object):
         # The navigation area that this element belongs to.
         self.area = None
         
-        # TODO: ???
+        # Used internally to keep references to NavConnection objects during mesh generation.
         self.connection = [None] * 4
         
-        # The index of this element. TODO: Remove and fix element saving to reflect.
+        # The index of this element, used for reading and writing.
         self.index = -1
         
         
