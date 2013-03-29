@@ -3,6 +3,7 @@ from doom.map.plane import Plane
 from nav.area import Area
 from nav.connection import Connection
 from nav.element import Element
+from util import checksum
 from util.rectangle import Rectangle
 from util.vector import Vector2
 import struct
@@ -16,7 +17,7 @@ class Mesh(object):
     # File structures.
     FILE_ID = 'DPMESH'
     FILE_VERSION = 1
-    FILE_HEADER = struct.Struct('<6sH')
+    FILE_HEADER = struct.Struct('<6sHi16s64sI')
     FILE_AREAS_HEADER = struct.Struct('<I')
     FILE_AREA = struct.Struct('<ihhhhhihIH')
     FILE_AREA_CONNECTION = struct.Struct('<i')
@@ -548,13 +549,17 @@ class Mesh(object):
         return True
     
     
-    def write(self, filename):
+    def write(self, filename, source_wad, map_lump_index):
         """
         Writes this mesh to a file.
         """
         
         with open(filename, 'wb') as f:
-            header_data = Mesh.FILE_HEADER.pack(Mesh.FILE_ID, Mesh.FILE_VERSION)
+            hash_crc32 = checksum.crc32_from_file(source_wad.filename)
+            hash_md5 = checksum.md5_from_file(source_wad.filename)
+            hash_sha256 = checksum.sha256_from_file(source_wad.filename)
+            
+            header_data = Mesh.FILE_HEADER.pack(Mesh.FILE_ID, Mesh.FILE_VERSION, hash_crc32, hash_md5, hash_sha256, map_lump_index)
             f.write(header_data)
             
             # Generate a list of area subdata.
@@ -625,7 +630,9 @@ class Mesh(object):
         """
         
         with open(filename, 'rb') as f:
-            file_id, file_version = Mesh.FILE_HEADER.unpack(f.read(Mesh.FILE_HEADER.size))
+            data = Mesh.FILE_HEADER.unpack(f.read(Mesh.FILE_HEADER.size))
+            file_id = data[0]
+            file_version = data[1]
             
             # Validate header.
             if file_id != Mesh.FILE_ID:

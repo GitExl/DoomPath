@@ -48,8 +48,8 @@ class Loop(object):
         
     def loop_init(self):
         wad_file = 'test/doom.wad'
-        map_lump = 'E1M1'
-        mesh_file = 'test/doom_e1m1.dpm'
+        map_lump = 'E2M1'
+        mesh_file = 'test/doom_e2m1.dpm'
         configuration = None
         
         print 'Loading map...'

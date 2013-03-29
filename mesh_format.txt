@@ -24,8 +24,12 @@ File format
 
 Header
 ------
-char[6]	"DPMESH"
-uint16	Mesh file version. (1)
+char[6]		"DPMESH"
+uint16		Mesh file version. (1)
+int32		CRC32 hash of the WAD file that this mesh was generated from.
+char[16]	MD5 hash of the WAD file that this mesh was generated from.
+char[64]	SHA256 hash of the WAD file that this mesh was generated from.
+uin32		Lump index in the WAD that points to the map header lump that this mesh was generated from.
 
 Planes
 ------
@@ -70,7 +74,7 @@ This is a teleporter entrance	CONNECTION_FLAG_TELEPORTER = 0x4
 
 Areas
 -----
-An area describes a rectanglar area of the navigation mesh through which pathfinding can move freely. Areas are connected to other areas by use of connections. An area's floor can be described by plane data, or can be entirely flat if no plane is described.
+An area describes a rectangular area of the navigation mesh through which pathfinding can move freely. Areas are connected to other areas by use of connections. An area's floor can be described by plane data, or can be entirely flat if no plane is described.
 
 uint32	Number of area objects.
 ...		Area object data.
