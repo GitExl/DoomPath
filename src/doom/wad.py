@@ -155,3 +155,17 @@ class WADReader(object):
                 return True
             
         return False
+    
+    
+    def get_map_list(self):
+        """
+        Returns a list of map lump names.
+        """
+        
+        maplist = []
+        
+        for index, lump in enumerate(self.lumps):
+            if lump.name == 'THINGS' and index > 0:
+                maplist.append(self.lumps[index - 1].name)
+        
+        return sorted(maplist)

@@ -1,11 +1,11 @@
 from doom import wad
 from doom.map.data import MapData
+from nav.config import Config
 from nav.grid import Grid
 from nav.mesh import Mesh
 from util.vector import Vector2, Vector3
 import cProfile
 import camera
-import config
 import pygame
 import render
 import sys
@@ -47,22 +47,19 @@ class Loop(object):
                 
         
     def loop_init(self):
-        source_wad = 'test/test.wad'
-        source_map = 'MAP01'
-        dest_mesh = 'test/test_map01.dpm'
-        resolution = 1
+        wad_file = 'test/doom.wad'
+        map_lump = 'E1M1'
+        mesh_file = 'test/doom_e1m1.dpm'
         configuration = None
-        max_area_size = 256
-        max_area_size_merged = 512
         
         print 'Loading map...'
-        wad_file = wad.WADReader(source_wad)
+        wad_file = wad.WADReader(wad_file)
         
-        if wad_file.lump_exists(source_map) == False:
-            print 'Map {} not found in {}.'.format(source_map, source_wad)
+        if wad_file.lump_exists(map_lump) == False:
+            print 'Map {} not found in {}.'.format(map_lump, wad_file)
             return False
             
-        self.map_data = MapData(wad_file, source_map)
+        self.map_data = MapData(wad_file, map_lump)
         
         # Load dataset for map.
         if configuration == None:
@@ -71,25 +68,17 @@ class Loop(object):
             else:
                 configuration = 'doom'
         print 'Loading {} configuration...'.format(configuration)
-        self.config = config.Config('doompath.json', configuration)
+        self.config = Config('doompath.json', configuration)
         
         print 'Map setup...'
         self.map_data.setup(self.config)
         
         print 'Creating navigation grid...'
-        self.nav_grid = Grid(self.map_data, self.config, resolution)
+        self.nav_grid = Grid()
         
-        print 'Placing starting elements...'
-        self.nav_grid.place_starts()
-                
-        print 'Detecting walkable space...'
-        self.nav_grid.create_walkable_elements(self.config)
-            
-        print 'Generating navigation mesh...'
-        self.nav_mesh = Mesh(self.map_data, self.config, self.nav_grid)
-        self.nav_mesh.create_from_grid(max_area_size, max_area_size_merged)
-        self.nav_mesh.write(dest_mesh)
-        self.nav_mesh.read(dest_mesh)
+        print 'Reading navigation mesh...'
+        self.nav_mesh = Mesh()
+        self.nav_mesh.read(mesh_file)
         
         self.map_data.blockmap.prune_empty()
 
@@ -166,7 +155,7 @@ class Loop(object):
         render.render_things(self.map_data, self.config, self.screen, self.camera)
         areas = render.render_navmesh(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
         connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
-        state = self.render_collision_box()
+        #state = self.render_collision_box()
         self.render_debug_text(connections, state, elements, areas)
         
         pygame.display.flip()

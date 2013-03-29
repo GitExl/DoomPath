@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding=utf8
 
-from doom import blockmap
+from doom.map import blockmap
 from doom.map.objects import Thing, Linedef, Sidedef, Vertex, Segment, SubSector, Sector, Node
 from doom.map.setup import MapSetup
 from util.vector import Vector2, Vector3

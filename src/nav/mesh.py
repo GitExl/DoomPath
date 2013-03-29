@@ -1,5 +1,5 @@
 from doom.map.objects import Teleporter
-from doom.plane import Plane
+from doom.map.plane import Plane
 from nav.area import Area
 from nav.connection import Connection
 from nav.element import Element
@@ -26,20 +26,22 @@ class Mesh(object):
     FILE_CONNECTION = struct.Struct('<ihhhhiiiI')
     
     
-    def __init__(self, map_data, config, nav_grid):
+    def __init__(self):
+        self.map_data = None
+        self.config = None
+        
         # All navigation areas that are aprt of this mesh.
         self.areas = []
         
-        self.map_data = map_data
-        self.nav_grid = nav_grid
-        self.config = config
-
-
-    def create_from_grid(self, max_area_size, max_area_size_merged):
+        
+    def create(self, nav_grid, map_data, config, max_area_size, max_area_size_merged):
         """
         Creates navigation areas from a navigation grid.
         """
         
+        self.map_data = map_data
+        self.config = config
+        self.nav_grid = nav_grid
         self.max_area_size = max_area_size
         self.max_area_size_merged = max_area_size_merged
         self.max_size_elements = self.max_area_size / self.nav_grid.element_size

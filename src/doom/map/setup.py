@@ -2,7 +2,7 @@
 #coding=utf8
 
 from doom.map.objects import Teleporter, Segment, Linedef, Sector
-from doom.plane import plane_setup
+from doom.map.plane import plane_setup
 from util.vector import Vector2
 
 

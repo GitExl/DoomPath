@@ -28,19 +28,19 @@ class Grid(object):
     REASON_LEAK = 8
     
     
-    def __init__(self, map_data, config, resolution):
-        self.config = config
-        self.map_data = map_data
+    def __init__(self):
+        self.config = None
+        self.map_data = None
         
         # The size of a single element.
-        self.element_size = config.player_radius / resolution
-        self.element_height = config.player_height
-        
-        # The dimensions of this grid.
-        self.size = Vector2(self.map_data.size.x / self.element_size, self.map_data.size.y / self.element_size)
-        
-        # Collision detection handler.
-        self.collider = Collider(map_data, config)
+        self.element_size = 0
+        self.element_height = 0
+
+        # The dimensions of this grid.        
+        self.size = None
+
+        # Collision detection handler.        
+        self.collider = None
         
         # All elements in this grid.
         self.elements = []
@@ -209,10 +209,12 @@ class Grid(object):
                 f.write(element_data)
            
                 
-    def read(self, filename):
+    def read(self, filename, map_data):
         """
         Reads a grid file from disk.
         """
+        
+        self.map_data = map_data
         
         with open(filename, 'rb') as f:
             file_id, version, element_count = Grid.FILE_HEADER.unpack(f.read(Grid.FILE_HEADER.size))
@@ -312,15 +314,26 @@ class Grid(object):
         return ((pos2.x * self.element_size) - (self.element_size / 2), (pos2.y * self.element_size) - (self.element_size / 2))
 
     
-    def create_walkable_elements(self, config):
+    def create(self, config, map_data, resolution):
         """
         Traverse the map, starting at already placed starting elements, and place elements where a
         player can walk.
         """
         
-        pos = Vector3()
+        self.config = config
+        self.map_data = map_data
+        
+        self.element_size = config.player_radius / resolution
+        self.element_height = config.player_height
+        
+        self.size = Vector2(self.map_data.size.x / self.element_size, self.map_data.size.y / self.element_size)        
+        self.collider = Collider(map_data, config)
+        
+        # Place starting elements.
+        self.place_starts()
         
         # Keep testing elements until the task list is empty.
+        pos = Vector3()
         while 1:
             if len(self.element_tasks) == 0:
                 break
