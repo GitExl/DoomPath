@@ -259,8 +259,7 @@ class MapData(object):
             if thing.doomid != thing_type:
                 continue
 
-            thing_sector_index = self.get_sector(thing.x, thing.y)
-            if self.sectors[thing_sector_index].tag == sector_tag:
+            if thing.sector.tag == sector_tag:
                 return thing
         
         return None
@@ -309,39 +308,6 @@ class MapData(object):
         y2 = linedef.vertex2.y
                     
         return int(x1 + (x2 - x1) / 2), int(y1 + (y2 - y1) / 2)
-
-
-    def point_on_node_side(self, x, y, node):
-        """
-        Returns on what side of a node the x, y coordiantes are.
-        
-        @param x: x coordinate to test.
-        @param y: y coordinate to test.
-        @param node: node to test against.
-        
-        @return: False if the point lies on the right side of the node,
-                 True if the point lies on the left side of the node.
-        """
-        
-        if node.delta_x == 0:
-            if x <= node.x:
-                return node.delta_y > 0
-            else:
-                return node.delta_y < 0
-            
-        elif node.delta_y == 0:
-            if y <= node.y:
-                return node.delta_x < 0
-            else:
-                return node.delta_x > 0
-    
-        x -= node.x
-        y -= node.y
-    
-        if (node.delta_y ^ node.delta_x ^ x ^ y) < 0:
-            return (node.delta_y ^ x) < 0
-        
-        return y * node.delta_x >= node.delta_y * x
     
     
     def point_in_subsector(self, x, y):
@@ -350,13 +316,34 @@ class MapData(object):
         """
         
         node_index = len(self.nodes) - 1
-    
         while (node_index & Node.FLAG_SUBSECTOR) == 0:
-            if self.point_on_node_side(x, y, self.nodes[node_index]) == 0:
-                node_index = self.nodes[node_index].child_right
+            node = self.nodes[node_index]
+            
+            # Determine on what side the requested coordinates lie.
+            if node.delta_x == 0:
+                if x <= node.x:
+                    side = node.delta_y > 0
+                else:
+                    side = node.delta_y < 0
+                
+            elif node.delta_y == 0:
+                if y <= node.y:
+                    side = node.delta_x < 0
+                else:
+                    side = node.delta_x > 0
+        
             else:
-                node_index = self.nodes[node_index].child_left
-    
+                nx = x - node.x
+                ny = y - node.y
+            
+                if (node.delta_y ^ node.delta_x ^ nx ^ ny) < 0:
+                    side = (node.delta_y ^ nx) < 0
+                else:
+                    side = ny * node.delta_x >= node.delta_y * nx
+            
+            # Choose the left or right child node.
+            node_index = self.nodes[node_index].children[side]
+            
         return node_index & ~Node.FLAG_SUBSECTOR
 
 

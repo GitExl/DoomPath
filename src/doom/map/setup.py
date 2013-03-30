@@ -35,6 +35,7 @@ class MapSetup(object):
         """
         
         self.setup_sector_data()
+        self.setup_thing_data()
         self.setup_bounds()
         self.setup_slopes()
         self.setup_threed_floors()
@@ -137,6 +138,16 @@ class MapSetup(object):
             if linedef.sidedef_back != Linedef.SIDEDEF_NONE:
                 sidedef = self.map_data.sidedefs[linedef.sidedef_back]
                 self.map_data.sectors[sidedef.sector].linedefs.append(linedef)
+                
+                
+    def setup_thing_data(self):
+        """
+        Generates additional thing data.
+        """
+        
+        for thing in self.map_data.things:
+            sector_index = self.map_data.get_sector(thing.x, thing.y)
+            thing.sector = self.map_data.sectors[sector_index]
         
         
     def setup_stairs(self):

@@ -335,7 +335,10 @@ class Thing(MapObject):
         
         'tid',
         'action',
-        'args'
+        'args',
+        
+        # Internal data.
+        'sector'
     )
     
     STRUCT_DOOM = struct.Struct('<hhHHH')
@@ -375,6 +378,9 @@ class Thing(MapObject):
         self.tid = 0
         self.action = 0
         self.args = [0] * 5
+        
+        # Internal data.
+        self.sector = None
     
     
     def unpack_from(self, data, is_hexen):
@@ -482,8 +488,8 @@ class Node(MapObject):
         
         'bb_right',
         'bb_left',
-        'child_left',
-        'child_right'
+        
+        'children'
     )
     
     STRUCT_DOOM = struct.Struct('<hhhhhhhhhhhhHH')
@@ -492,6 +498,10 @@ class Node(MapObject):
 
     # Indicates that the node index is actually a subsector index.
     FLAG_SUBSECTOR = 0x8000
+    
+    # Child node index.
+    CHILD_RIGHT = 0
+    CHILD_LEFT = 1
     
     
     def __init__(self, x=0, y=0):
@@ -503,8 +513,8 @@ class Node(MapObject):
         
         self.bb_right = Rectangle()
         self.bb_left = Rectangle()
-        self.child_right = 0
-        self.child_left = 0
+        
+        self.children = [0, 0]
     
     
     def unpack_from(self, data, is_hexen):
@@ -517,8 +527,8 @@ class Node(MapObject):
         self.bb_right.set(data[4], data[5], data[6], data[7])
         self.bb_left.set(data[8], data[9], data[10], data[11])
         
-        self.child_right = data[12]
-        self.child_left = data[13]
+        self.children[0] = data[12]
+        self.children[1] = data[13]
     
     
     def set_references(self, map_data):
