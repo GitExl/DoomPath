@@ -132,10 +132,11 @@ class MapSetup(object):
         for linedef in self.map_data.linedefs:
             if linedef.sidedef_front != Linedef.SIDEDEF_NONE:
                 sidedef = self.map_data.sidedefs[linedef.sidedef_front]
+                self.map_data.sectors[sidedef.sector].linedefs.append(linedef)
+                
             if linedef.sidedef_back != Linedef.SIDEDEF_NONE:
                 sidedef = self.map_data.sidedefs[linedef.sidedef_back]
-            
-            self.map_data.sectors[sidedef.sector].linedefs.append(linedef)
+                self.map_data.sectors[sidedef.sector].linedefs.append(linedef)
         
         
     def setup_stairs(self):

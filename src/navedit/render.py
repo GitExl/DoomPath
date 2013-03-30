@@ -2,122 +2,82 @@ from doom.map.objects import Linedef
 from nav.connection import Connection
 from nav.element import Element
 from util import rectangle
+from util.rectangle import Rectangle
+from util.vector import Vector2
 import pygame
 
 
 COLOR_LINEDEF_IMPASSIBLE = pygame.Color(223, 223, 223, 255)
 COLOR_LINEDEF_2SIDED = pygame.Color(95, 95, 95, 255)
 COLOR_LINEDEF_HIGHLIGHT = pygame.Color(255, 100, 0, 255)
-COLOR_BLOCKMAP = pygame.Color(0, 45, 89, 255)
-COLOR_BLOCKMAP_HIGHLIGHT = pygame.Color(0, 96, 191, 255)
+
 COLOR_THING = pygame.Color(0, 255, 0, 255)
+
+COLOR_AREA_FILL = pygame.Color(15, 15, 15, 255)
+COLOR_AREA_HIGHLIGHT = pygame.Color(63, 63, 63, 255)
+COLOR_AREA_BORDER = pygame.Color(191, 95, 0, 255)
+
+COLOR_CONNECTION_RECTANGLE = pygame.Color(15, 47, 63, 255)
+COLOR_CONNECTION_TELEPORT = pygame.Color(31, 191, 95, 255)
+COLOR_CONNECTION_ACTIVE = pygame.Color(255, 47, 63, 255)
+CONNECTION_TELEPORT_SIZE = 6
 
 grid_colors = None
 grid_colors_special = None
 
 
-def render_connections(nav_mesh, surface, camera, mouse_pos):
-    COLOR_RECTANGLE = pygame.Color(7, 23, 31, 255)
-    COLOR_TELEPORT = pygame.Color(31, 191, 95, 255)
-    COLOR_ACTIVE = pygame.Color(255, 47, 63, 255)
-    TELEPORT_SIZE = 6    
+def render_map(map_data, surface, camera, config, sector_mark):
+    p1 = Vector2(camera.x, camera.y)
+    p2 = Vector2(camera.x + camera.map_width, camera.y + camera.map_height)
     
-    connections = set()
-    c_rect = rectangle.Rectangle()
+    bx1, by1 = map_data.blockmap.map_to_blockmap(p1)
+    bx2, by2 = map_data.blockmap.map_to_blockmap(p2)
+    rect = Rectangle(bx1, by1, bx2, by2)
     
-    for area in nav_mesh.areas:
-        for connection in area.connections:
-            if (connection.flags & Connection.FLAG_TELEPORTER) != 0:
-                c_rect.copy_from(connection.rect)
-                c_rect.flip_if_reversed()
-                
-                x1, y1 = camera.map_to_screen(c_rect.left, c_rect.top)
-                x2, y2 = camera.map_to_screen(c_rect.right, c_rect.bottom)
-                
-                if mouse_pos.x >= c_rect.left - TELEPORT_SIZE and mouse_pos.y >= c_rect.top - TELEPORT_SIZE and \
-                  mouse_pos.x <= c_rect.right + TELEPORT_SIZE and mouse_pos.y <= c_rect.bottom + TELEPORT_SIZE:
-                    color = COLOR_ACTIVE
-                    connections.add(connection)
-                    active = True
-                else:
-                    color = COLOR_TELEPORT
-                    active = False
-                    
-                size = int(TELEPORT_SIZE * camera.zoom)
-                pygame.draw.line(surface, color, (x1, y1), (x2, y2), size)
-                
-                if active == True:
-                    sx, sy = camera.map_to_screen(connection.rect.left + connection.rect.get_width() / 2, connection.rect.top + connection.rect.get_height() / 2)
-                    dx, dy = camera.map_to_screen(connection.area_b.rect.left + connection.area_b.rect.get_width() / 2, connection.area_b.rect.top + connection.area_b.rect.get_height() / 2)
-                    pygame.draw.line(surface, COLOR_ACTIVE, (sx, sy), (dx, dy), 1)
-                
-            else:
-                rx, ry = camera.map_to_screen(connection.rect.left, connection.rect.top)
-                width, height = connection.rect.get_width() * camera.zoom, connection.rect.get_height() * camera.zoom
-                
-                rx += 1
-                ry += 1
-                width -= 1
-                height -= 1
-                
-                if rx < 0:
-                    width -= abs(rx)
-                    rx = 0
-                if ry < 0:
-                    height -= abs(ry)
-                    ry = 0
-                if rx + width >= surface.get_width():
-                    width = surface.get_width() - rx
-                if ry + height >= surface.get_height():
-                    height = surface.get_height() - ry
-                    
-                if width < 1 or height < 1:
-                    continue
+    linedefs, things = map_data.blockmap.get_region(rect)
+    linedefs = set(linedefs)
+    things = set(things)
     
-                if connection.rect.is_point_inside(mouse_pos) == True:
-                    color = COLOR_ACTIVE
-                    connections.add(connection)
-                else:
-                    color = COLOR_RECTANGLE
-                    
-                rect = pygame.Rect(rx, ry, width, height)
-                surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
+    cx = camera.x
+    cy = camera.y
+    cz = camera.zoom
+    linefunc = pygame.draw.line
+    FLAG_IMPASSABLE = Linedef.FLAG_IMPASSIBLE
+    
+    color = None
+    for linedef_index in linedefs:
+        linedef = map_data.linedefs[linedef_index]
+        
+        if (linedef.flags & FLAG_IMPASSABLE) != 0:
+            color = COLOR_LINEDEF_IMPASSIBLE
+        else:
+            color = COLOR_LINEDEF_2SIDED
             
-    return connections
-
-
-def render_blockmap(map_data, surface, camera, mouse_pos):
-    box_top = mouse_pos.y + map_data.config.player_radius
-    box_bottom = mouse_pos.y - map_data.config.player_radius
-    box_right = mouse_pos.x + map_data.config.player_radius
-    box_left = mouse_pos.x - map_data.config.player_radius
+        x1 = (linedef.vertex1.x - cx) * cz
+        y1 = (linedef.vertex1.y - cy) * cz
+        x2 = (linedef.vertex2.x - cx) * cz
+        y2 = (linedef.vertex2.y - cy) * cz
+        
+        linefunc(surface, color, (x1, y1), (x2, y2), 1)
     
-    x1 = int((box_left - map_data.blockmap.origin.x) / map_data.blockmap.blocksize)
-    y1 = int((box_bottom - map_data.blockmap.origin.y) / map_data.blockmap.blocksize)
-    x2 = int((box_right - map_data.blockmap.origin.x) / map_data.blockmap.blocksize) + 1
-    y2 = int((box_top - map_data.blockmap.origin.y) / map_data.blockmap.blocksize) + 1
-    
-    # Draw blockmap.
-    for cx in range(0, map_data.blockmap.size.x):
-        for cy in range(0, map_data.blockmap.size.y):
-            
-            bx = int(cx * map_data.blockmap.blocksize + map_data.blockmap.origin.x)
-            by = int(cy * map_data.blockmap.blocksize + map_data.blockmap.origin.y)
-            pos1 = camera.map_to_screen(bx, by)
-            pos2 = (int(map_data.blockmap.blocksize * camera.zoom), int(map_data.blockmap.blocksize * camera.zoom))
-            rect = pygame.Rect(pos1, pos2)
-
-            if cx >= x1 and cx < x2 and cy >= y1 and cy < y2:
-                color = COLOR_BLOCKMAP_HIGHLIGHT
-            else:
-                color = COLOR_BLOCKMAP
+    if sector_mark >= 0:
+        sector = map_data.sectors[sector_mark]
+        color = COLOR_LINEDEF_HIGHLIGHT
+        
+        for linedef in sector.linedefs:
+            pos1 = camera.map_to_screen(linedef.vertex1.x, linedef.vertex1.y)
+            pos2 = camera.map_to_screen(linedef.vertex2.x, linedef.vertex2.y)
+        
+            pygame.draw.line(surface, color, pos1, pos2, 1)
                 
-            pygame.draw.rect(surface, color, rect, 1)
-
-
-def render_things(map_data, config, surface, camera):
+        center_pos = map_data.get_sector_center(sector_mark)
+        center_pos.x, center_pos.y = camera.map_to_screen(center_pos.x, center_pos.y)
+        
+        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_pos.x), int(center_pos.y)), int(5 * camera.zoom))
+        
     color = COLOR_THING
-    for thing in map_data.things:
+    for thing_index in things:
+        thing = map_data.things[thing_index]
         thing_def = config.thing_dimensions.get(thing.doomid)
         if thing_def is None:
             continue
@@ -133,60 +93,55 @@ def render_things(map_data, config, surface, camera):
             ((thing_def.radius * 2) * camera.zoom, (thing_def.radius * 2) * camera.zoom)
         )
         pygame.draw.rect(surface, color, rect, 1)
+        
 
-
-def render_linedefs(map_data, surface, camera, sector_mark):
-    color = None
-    for linedef in map_data.linedefs:
-        front = linedef.sidedef_front
-        back = linedef.sidedef_back
-        
-        sector = -1
-        if front != Linedef.SIDEDEF_NONE:
-            sector = map_data.sidedefs[front].sector
-        if sector != sector_mark and back != Linedef.SIDEDEF_NONE:
-            sector = map_data.sidedefs[back].sector
-        
-        if sector == sector_mark:
-            color = COLOR_LINEDEF_HIGHLIGHT
-        elif (linedef.flags & Linedef.FLAG_TWOSIDED) == 0 or (linedef.flags & Linedef.FLAG_IMPASSIBLE) != 0:
-            color = COLOR_LINEDEF_IMPASSIBLE
-        else:
-            color = COLOR_LINEDEF_2SIDED
-            
-        pos1 = camera.map_to_screen(linedef.vertex1.x, linedef.vertex1.y)
-        pos2 = camera.map_to_screen(linedef.vertex2.x, linedef.vertex2.y)
-        
-        pygame.draw.line(surface, color, pos1, pos2, 1)
+def render_mesh(nav_mesh, map_data, surface, camera, mouse_pos):
+    selected_areas = []
     
-    if sector_mark >= 0:
-        center_pos = map_data.get_sector_center(sector_mark)
-        center_pos.x, center_pos.y = camera.map_to_screen(center_pos.x, center_pos.y)
+    p1 = Vector2(camera.x, camera.y)
+    p2 = Vector2(camera.x + camera.map_width, camera.y + camera.map_height)
+    
+    bx1, by1 = map_data.blockmap.map_to_blockmap(p1)
+    bx2, by2 = map_data.blockmap.map_to_blockmap(p2)
+    rect = Rectangle(bx1, by1, bx2, by2)
+    
+    render_areas = []
+    render_connections = []
+    blockmap = map_data.blockmap
+    blocks_len = len(blockmap.blocks)
+    
+    cy = rect.top
+    while cy <= rect.bottom:
+        cx = rect.left
+        while cx <= rect.right:
+            index = cx + cy * blockmap.size.x
+            if index >= 0 and index < blocks_len:
+                block = blockmap.blocks[index]
+                if block is not None:
+                    render_areas.extend(block.areas)
+            
+            cx += 1
+        cy += 1
+    render_areas = set(render_areas)
+    
+    for area_index in render_areas:
+        area = nav_mesh.areas[area_index]
         
-        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_pos.x), int(center_pos.y)), int(5 * camera.zoom))
-        
-
-def render_navmesh(nav_mesh, surface, camera, mouse_pos):
-    COLOR_FILL = pygame.Color(15, 15, 15, 255)
-    COLOR_HIGHLIGHT = pygame.Color(63, 63, 63, 255)
-    COLOR_BORDER = pygame.Color(191, 95, 0, 255)
-
-    areas = []
-
-    for area in nav_mesh.areas:
         if area.rect.is_point_inside(mouse_pos) == True:
-            color = COLOR_HIGHLIGHT
-            areas.append(area)
+            color = COLOR_AREA_HIGHLIGHT
+            selected_areas.append(area)
         else:
-            color = COLOR_FILL
+            color = COLOR_AREA_FILL
         
-        x, y = camera.map_to_screen(area.rect.left, area.rect.top)
-        width, height = area.rect.get_width() * camera.zoom, area.rect.get_height() * camera.zoom
+        x = (area.rect.left - camera.x) * camera.zoom
+        y = (area.rect.top- camera.y) * camera.zoom
+        width = (area.rect.right - area.rect.left) * camera.zoom
+        height = (area.rect.bottom - area.rect.top) * camera.zoom
         
         x += 1
         y += 1
-        width -= 1
-        height -= 1
+        width -= 2
+        height -= 2
         
         if x < 0:
             width -= abs(x)
@@ -205,12 +160,75 @@ def render_navmesh(nav_mesh, surface, camera, mouse_pos):
         rect = pygame.Rect(x, y, width, height)
         
         surface.fill(color, rect, special_flags=pygame.BLEND_SUB)
-        pygame.draw.rect(surface, COLOR_BORDER, rect, 1)
+        pygame.draw.rect(surface, COLOR_AREA_BORDER, rect, 1)
+        
+        render_connections.extend(area.connections)
+
+    c_rect = rectangle.Rectangle()
+    selected_connections = []
+    render_connections = set(render_connections)
     
-    return areas
+    for connection in render_connections:
+        if (connection.flags & Connection.FLAG_TELEPORTER) != 0:
+            c_rect.copy_from(connection.rect)
+            c_rect.flip_if_reversed()
+            
+            x1, y1 = camera.map_to_screen(c_rect.left, c_rect.top)
+            x2, y2 = camera.map_to_screen(c_rect.right, c_rect.bottom)
+            
+            if mouse_pos.x >= c_rect.left - CONNECTION_TELEPORT_SIZE and mouse_pos.y >= c_rect.top - CONNECTION_TELEPORT_SIZE and \
+              mouse_pos.x <= c_rect.right + CONNECTION_TELEPORT_SIZE and mouse_pos.y <= c_rect.bottom + CONNECTION_TELEPORT_SIZE:
+                color = COLOR_CONNECTION_ACTIVE
+                selected_connections.append(connection)
+                active = True
+            else:
+                color = COLOR_CONNECTION_TELEPORT
+                active = False
+                
+            size = int(CONNECTION_TELEPORT_SIZE * camera.zoom)
+            pygame.draw.line(surface, color, (x1, y1), (x2, y2), size)
+            
+            if active == True:
+                sx, sy = camera.map_to_screen(connection.rect.left + connection.rect.get_width() / 2, connection.rect.top + connection.rect.get_height() / 2)
+                dx, dy = camera.map_to_screen(connection.area_b.rect.left + connection.area_b.rect.get_width() / 2, connection.area_b.rect.top + connection.area_b.rect.get_height() / 2)
+                pygame.draw.line(surface, COLOR_CONNECTION_ACTIVE, (sx, sy), (dx, dy), 1)
+            
+        else:
+            rx, ry = camera.map_to_screen(connection.rect.left, connection.rect.top)
+            width, height = connection.rect.get_width() * camera.zoom, connection.rect.get_height() * camera.zoom
+            
+            rx += 1
+            ry += 1
+            width -= 2
+            height -= 2
+            
+            if rx < 0:
+                width -= abs(rx)
+                rx = 0
+            if ry < 0:
+                height -= abs(ry)
+                ry = 0
+            if rx + width >= surface.get_width():
+                width = surface.get_width() - rx
+            if ry + height >= surface.get_height():
+                height = surface.get_height() - ry
+                
+            if width < 1 or height < 1:
+                continue
+
+            if connection.rect.is_point_inside(mouse_pos) == True:
+                color = COLOR_CONNECTION_ACTIVE
+                selected_connections.append(connection)
+            else:
+                color = COLOR_CONNECTION_RECTANGLE
+                
+            rect = pygame.Rect(rx, ry, width, height)
+            surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
+
+    return selected_areas, selected_connections
 
 
-def render_navgrid_init(nav_grid):
+def render_grid_init(nav_grid):
     COLOR_ELEMENT_SPECIAL = pygame.Color(255, 0, 255, 255)
     COLOR_ELEMENT = pygame.Color(255, 255, 255, 255)
     
@@ -225,7 +243,7 @@ def render_navgrid_init(nav_grid):
         nav_grid.grid_colors_special[index] = pygame.Color(int(COLOR_ELEMENT_SPECIAL.r * v), int(COLOR_ELEMENT_SPECIAL.g * v), int(COLOR_ELEMENT_SPECIAL.b * v), 255)
 
 
-def render_navgrid(nav_grid, surface, camera, mouse_pos):
+def render_grid(nav_grid, surface, camera, mouse_pos):
     COLOR_ELEMENT_HIGHLIGHT = pygame.Color(0, 255, 255, 255)
     
     mouse_pos = nav_grid.map_to_element(mouse_pos)

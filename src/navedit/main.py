@@ -47,9 +47,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        wad_file = 'test/doom.wad'
-        map_lump = 'E2M1'
-        mesh_file = 'test/doom_e2m1.dpm'
+        wad_file = 'test/dv.wad'
+        map_lump = 'MAP05'
+        mesh_file = 'test/dv_map05.dpm'
         configuration = None
         
         print 'Loading map...'
@@ -80,6 +80,7 @@ class Loop(object):
         self.nav_mesh = Mesh()
         self.nav_mesh.read(mesh_file)
         
+        self.map_data.blockmap.generate_areas(self.nav_mesh)
         self.map_data.blockmap.prune_empty()
 
         print 'Creating display...'
@@ -87,7 +88,7 @@ class Loop(object):
         self.screen = pygame.display.set_mode((1280, 720))
         self.camera = camera.Camera(0, 0, 1280, 720, 1.0)
         self.center_map()
-        render.render_navgrid_init(self.nav_grid)
+        render.render_grid_init(self.nav_grid)
         
         return True
         
@@ -145,16 +146,13 @@ class Loop(object):
         connections = None
         elements = None
         
-        #sector = self.map_data.get_sector(self.mouse.map_pos.x, self.mouse.map_pos.y)
+        sector = self.map_data.get_sector(self.mouse.map_pos.x, self.mouse.map_pos.y)
         
         self.screen.fill(COLOR_BACKGROUND)
         
-        #render.render_blockmap(self.map_data, self.screen, self.camera, self.mouse.map_pos)
-        #elements = render.render_navgrid(self.nav_grid, self.screen, self.camera, self.mouse.map_pos)
-        render.render_linedefs(self.map_data, self.screen, self.camera, sector)
-        render.render_things(self.map_data, self.config, self.screen, self.camera)
-        areas = render.render_navmesh(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
-        connections = render.render_connections(self.nav_mesh, self.screen, self.camera, self.mouse.map_pos)
+        #elements = render.render_nav(self.nav_grid, self.screen, self.camera, self.mouse.map_pos)
+        render.render_map(self.map_data, self.screen, self.camera, self.config, sector)
+        areas, connections = render.render_mesh(self.nav_mesh, self.map_data, self.screen, self.camera, self.mouse.map_pos)
         #state = self.render_collision_box()
         self.render_debug_text(connections, state, elements, areas)
         
