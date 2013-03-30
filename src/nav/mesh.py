@@ -3,7 +3,6 @@ from doom.map.plane import Plane
 from nav.area import Area
 from nav.connection import Connection
 from nav.element import Element
-from util import checksum
 from util.rectangle import Rectangle
 from util.vector import Vector2
 import struct
@@ -17,7 +16,7 @@ class Mesh(object):
     # File structures.
     FILE_ID = 'DPMESH'
     FILE_VERSION = 1
-    FILE_HEADER = struct.Struct('<6sHi16s64sI')
+    FILE_HEADER = struct.Struct('<6sH16s')
     FILE_AREAS_HEADER = struct.Struct('<I')
     FILE_AREA = struct.Struct('<ihhhhhihIH')
     FILE_AREA_CONNECTION = struct.Struct('<i')
@@ -549,17 +548,13 @@ class Mesh(object):
         return True
     
     
-    def write(self, filename, source_wad, map_lump_index):
+    def write(self, filename):
         """
         Writes this mesh to a file.
         """
         
         with open(filename, 'wb') as f:
-            hash_crc32 = checksum.crc32_from_file(source_wad.filename)
-            hash_md5 = checksum.md5_from_file(source_wad.filename)
-            hash_sha256 = checksum.sha256_from_file(source_wad.filename)
-            
-            header_data = Mesh.FILE_HEADER.pack(Mesh.FILE_ID, Mesh.FILE_VERSION, hash_crc32, hash_md5, hash_sha256, map_lump_index)
+            header_data = Mesh.FILE_HEADER.pack(Mesh.FILE_ID, Mesh.FILE_VERSION, self.map_data.data_hash)
             f.write(header_data)
             
             # Generate a list of area subdata.
@@ -624,7 +619,7 @@ class Mesh(object):
                     f.write(connection_data)
                 
     
-    def read(self, filename):
+    def read(self, filename, map_data):
         """
         Reads a mesh from a file.
         """
@@ -633,6 +628,13 @@ class Mesh(object):
             data = Mesh.FILE_HEADER.unpack(f.read(Mesh.FILE_HEADER.size))
             file_id = data[0]
             file_version = data[1]
+            
+            data_hash = data[2]
+            if data_hash != map_data.data_hash:
+                self.outdated = True
+                print 'Warning: the navigation mesh is out of date or the wrong map is loaded.'
+            else:
+                self.outdated = False
             
             # Validate header.
             if file_id != Mesh.FILE_ID:

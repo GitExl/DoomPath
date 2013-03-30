@@ -26,9 +26,7 @@ Header
 ------
 char[6]		"DPMESH"
 uint16		Mesh file version. (1)
-int32		CRC32 hash of the WAD file that this mesh was generated from.
-char[16]	MD5 hash of the WAD file that this mesh was generated from.
-char[64]	SHA256 hash of the WAD file that this mesh was generated from.
+char[16]	MD5 hash of the lump data of the map the mesh belongs to. See Map hash section.
 uin32		Lump index in the WAD that points to the map header lump that this mesh was generated from.
 
 Planes
@@ -110,3 +108,16 @@ Can jump west 			FLAG_JUMP_WEST = 0x0040
 Special sectors
 ---------------
 Some areas refer to a sector index. Areas with a sector reference may have a moving floor or ceiling during gameplay, and should be evaluated for walkability everytime the area is encountered during pathfinding.
+
+Map hash
+--------
+A MD5 digest is generated from a map's data lumps, and used to verify if the navigation mesh is outdated or not. The following lumps are digested together (in order):
+
+THINGS
+LINEDEFS
+SIDEDEFS
+VERTEXES
+SEGMENTS
+SSECTORS
+NODES
+SECTORS

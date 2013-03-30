@@ -73,12 +73,12 @@ class Loop(object):
         print 'Map setup...'
         self.map_data.setup(self.config)
         
-        print 'Creating navigation grid...'
-        self.nav_grid = Grid()
+        #print 'Creating navigation grid...'
+        #self.nav_grid = Grid()
         
         print 'Reading navigation mesh...'
         self.nav_mesh = Mesh()
-        self.nav_mesh.read(mesh_file)
+        self.nav_mesh.read(mesh_file, self.map_data)
         
         self.map_data.blockmap.generate_areas(self.nav_mesh)
         self.map_data.blockmap.prune_empty()
@@ -88,7 +88,8 @@ class Loop(object):
         self.screen = pygame.display.set_mode((1280, 720))
         self.camera = camera.Camera(0, 0, 1280, 720, 1.0)
         self.center_map()
-        render.render_grid_init(self.nav_grid)
+        
+        #render.render_grid_init(self.nav_grid)
         
         return True
         
@@ -233,7 +234,7 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    cProfile.run('loop.loop_init()', sort=1)
-    #if loop.loop_init() == False:
-    #    sys.exit()
+    #cProfile.run('loop.loop_init()', sort=1)
+    if loop.loop_init() == False:
+        sys.exit()
     loop.loop_start()

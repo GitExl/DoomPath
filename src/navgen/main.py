@@ -45,8 +45,7 @@ def generate_map(wad_file, map_lump, settings):
     
     print 'Writing navigation mesh...'
     dest_file = get_side_filename(settings.wad, map_lump, 'dpm')
-    lump_index = wad_file.get_index(map_lump)
-    nav_mesh.write(dest_file, wad_file, lump_index)
+    nav_mesh.write(dest_file)
     
     return True
 

@@ -5,6 +5,7 @@ from doom.map import blockmap
 from doom.map.objects import Thing, Linedef, Sidedef, Vertex, Segment, SubSector, Sector, Node
 from doom.map.setup import MapSetup
 from util.vector import Vector2, Vector3
+import hashlib
 
 
 class MapData(object):
@@ -27,6 +28,10 @@ class MapData(object):
         # Additional map data, generated from raw data.
         self.linedef_ids = None
         self.teleporters = None
+        
+        # Hash of relevant map data.
+        self.hasher = hashlib.md5()
+        self.data_hash = None
         
         # If True, this map is stored in Hexen format, Doom format otherwise.
         self.is_hexen = False
@@ -55,6 +60,10 @@ class MapData(object):
         self.subsectors = self.read_data(wad_file, headerindex, SubSector)
         self.nodes = self.read_data(wad_file, headerindex, Node)
         self.sectors = self.read_data(wad_file, headerindex, Sector)
+        
+        # Produce a hash of the final map data.
+        self.data_hash = self.hasher.digest()
+        self.hasher = None
         
         # Change indices to references where needed.
         self.set_data_references(self.linedefs)
@@ -91,6 +100,8 @@ class MapData(object):
             datalist.append(item)
             
             offset += item_struct.size
+        
+        self.hasher.update(data)
         
         return datalist
     
