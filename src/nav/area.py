@@ -15,11 +15,14 @@ class Area(object):
         
         'sector',
         'flags',
-        'elements',
         'plane',
         'connections',
+
+        'elements',        
+        'inside_rect',
         
-        'inside_rect'
+        'path',
+        'visited',
     )
     
 
@@ -57,6 +60,9 @@ class Area(object):
         # For internal use, to track elements belonging to this area.
         self.elements = []
         self.inside_rect = Rectangle()
+        
+        self.path = False
+        self.visited = False
 
 
     def get_side(self, side):
@@ -78,3 +84,11 @@ class Area(object):
     
     def __repr__(self):
         return 'area {}, z {}, sector {}, width {}, height {}, plane {}, flags {}, connections {}'.format(self.rect, self.z, self.sector, self.rect.get_width(), self.rect.get_height(), self.plane, self.flags, len(self.connections)) 
+    
+    
+    def __hash__(self):
+        return hash((self.rect, self.z, self.sector, self.flags, self.plane))
+    
+    
+    def __eq__(self, other):
+        return (self.rect, self.z, self.sector, self.flags, self.plane) == (other.rect, other.z, other.sector, other.flags, other.plane)

@@ -28,6 +28,10 @@ class Rectangle(object):
         return self.bottom - self.top
     
     
+    def get_center(self):
+        return self.left + (self.right - self.left) / 2, self.top + (self.bottom - self.top) / 2
+    
+    
     def intersects_with(self, rect):
         return not (rect.left > self.right or rect.right < self.left or rect.top > self.bottom or rect.bottom < self.top)
 

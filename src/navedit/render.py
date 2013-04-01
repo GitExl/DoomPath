@@ -15,6 +15,8 @@ COLOR_THING = pygame.Color(0, 255, 0, 255)
 
 COLOR_AREA_FILL = pygame.Color(15, 15, 15, 255)
 COLOR_AREA_HIGHLIGHT = pygame.Color(63, 63, 63, 255)
+COLOR_AREA_PATH = pygame.Color(255, 255, 63, 255)
+COLOR_AREA_VISITED = pygame.Color(127, 127, 31, 255)
 COLOR_AREA_BORDER = pygame.Color(191, 95, 0, 255)
 
 COLOR_CONNECTION_RECTANGLE = pygame.Color(15, 47, 63, 255)
@@ -22,8 +24,18 @@ COLOR_CONNECTION_TELEPORT = pygame.Color(31, 191, 95, 255)
 COLOR_CONNECTION_ACTIVE = pygame.Color(255, 47, 63, 255)
 CONNECTION_TELEPORT_SIZE = 6
 
+COLOR_POINT = pygame.Color(255, 31, 0, 255)
+
 grid_colors = None
 grid_colors_special = None
+
+
+def draw_point(surface, camera, pos2):
+    if pos2 is None:
+        return
+    
+    x, y = camera.map_to_screen(pos2.x, pos2.y)
+    pygame.draw.circle(surface, COLOR_POINT, (int(x), int(y)), int(10 * camera.zoom))
 
 
 def render_map(map_data, surface, camera, config, sector_mark):
@@ -127,7 +139,11 @@ def render_mesh(nav_mesh, map_data, surface, camera, mouse_pos):
     for area_index in render_areas:
         area = nav_mesh.areas[area_index]
         
-        if area.rect.is_point_inside(mouse_pos) == True:
+        if area.path == True:
+            color = COLOR_AREA_PATH
+        elif area.visited == True:
+            color = COLOR_AREA_VISITED
+        elif area.rect.is_point_inside(mouse_pos) == True:
             color = COLOR_AREA_HIGHLIGHT
             selected_areas.append(area)
         else:
@@ -159,7 +175,7 @@ def render_mesh(nav_mesh, map_data, surface, camera, mouse_pos):
         
         rect = pygame.Rect(x, y, width, height)
         
-        surface.fill(color, rect, special_flags=pygame.BLEND_SUB)
+        surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
         pygame.draw.rect(surface, COLOR_AREA_BORDER, rect, 1)
         
         render_connections.extend(area.connections)

@@ -45,6 +45,7 @@ class MapData(object):
         headerindex = wad_file.get_index(lump_name)
         if headerindex == -1:
             print 'Cannot find map lump {}'.format(lump_name)
+            return
         
         # Detect Hexen mode from the presence of a BEHAVIOR lump.
         if len(wad_file.lumps) > headerindex + 11:

@@ -89,7 +89,7 @@ class Mesh(object):
         return True
 
 
-    def get_area_at(self, pos2):
+    def get_area_at(self, pos2, z):
         """
         Returns the area object at a 2d position..
         """
@@ -101,7 +101,7 @@ class Mesh(object):
 
         for index in block.areas:
             area = self.areas[index]
-            if area.rect.is_point_inside(pos2) == True:
+            if area.z == z and area.rect.is_point_inside(pos2) == True:
                 return area
         
         return None
@@ -150,11 +150,13 @@ class Mesh(object):
             
             # Get the area that the teleporter target is in.
             if teleporter.kind == Teleporter.TELEPORTER_THING:
-                target_area = self.get_area_at(teleporter.dest)
+                floorz = self.map_data.get_floor_z(teleporter.dest.x, teleporter.dest.y)
+                target_area = self.get_area_at(teleporter.dest, floorz)
             if teleporter.kind == Teleporter.TELEPORTER_LINE:
                 dest = Vector2()
                 dest.x, dest.y = self.map_data.get_line_center(teleporter.dest_line)
-                target_area = self.get_area_at(dest)
+                floorz = self.map_data.get_floor_z(teleporter.dest.x, teleporter.dest.y)
+                target_area = self.get_area_at(dest, floorz)
 
             # Ignore missing teleport targets.
             if target_area is None:
@@ -702,3 +704,5 @@ class Mesh(object):
                     connection.area_b = area_hashes[connection.area_b]
                 else:
                     connection.area_b = None
+        
+        self.map_data = map_data

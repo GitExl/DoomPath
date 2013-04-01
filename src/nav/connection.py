@@ -58,3 +58,11 @@ class Connection(object):
     
     def __repr__(self):
         return 'connection {}, {}, linedef {}'.format(self.rect, self.get_flags_string(), self.linedef)
+    
+    
+    def __hash__(self):
+        return hash((self.rect, self.flags, self.area_a, self.area_b, self.linedef))
+    
+    
+    def __eq__(self, other):
+        return (self.rect, self.flags, self.area_a, self.area_b, self.linedef) == (other.rect, other.flags, other.area_a, other.area_b, other.linedef)

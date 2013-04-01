@@ -3,6 +3,7 @@ from doom.map.data import MapData
 from nav.config import Config
 from nav.grid import Grid
 from nav.mesh import Mesh
+from navedit import pathfind
 from util.vector import Vector2, Vector3
 import cProfile
 import camera
@@ -39,6 +40,10 @@ class Loop(object):
         self.nav_grid = None
         self.nav_mesh = None
         
+        self.pathfinder = None
+        self.point_start = None
+        self.point_end = None
+        
         pygame.font.init()
         self.font = pygame.font.Font('04b_03__.ttf', 8)
         
@@ -53,12 +58,7 @@ class Loop(object):
         configuration = None
         
         print 'Loading map...'
-        wad_file = wad.WADReader(wad_file)
-        
-        if wad_file.lump_exists(map_lump) == False:
-            print 'Map {} not found in {}.'.format(map_lump, wad_file)
-            return False
-            
+        wad_file = wad.WADReader(wad_file)            
         self.map_data = MapData(wad_file, map_lump)
         
         # Load dataset for map.
@@ -91,6 +91,8 @@ class Loop(object):
         
         #render.render_grid_init(self.nav_grid)
         
+        self.pathfinder = pathfind.Pathfinder(self.nav_mesh)
+        
         return True
         
         
@@ -107,6 +109,10 @@ class Loop(object):
                 self.mouse.buttons[event.button] = True
             elif event.type == pygame.MOUSEBUTTONUP:
                 self.mouse.buttons[event.button] = False
+                
+                if event.button == 1:
+                    self.place_path_point(self.mouse.map_pos.x, self.mouse.map_pos.y)
+                    update_display = True
                 
             elif event.type == pygame.MOUSEMOTION:
                 self.mouse.pos.x = event.pos[0]
@@ -140,6 +146,18 @@ class Loop(object):
                 update_display = False
 
 
+    def place_path_point(self, x, y):
+        z = self.map_data.get_floor_z(x, y)
+        
+        if self.point_start is None or self.point_end is not None:
+            self.point_start = Vector3(x, y, z)
+            self.point_end = None
+            
+        elif self.point_end is None:
+            self.point_end = Vector3(x, y, z)
+            self.pathfinder.find(self.point_start, self.point_end)
+
+
     def update_display(self):
         sector = -1
         state = None
@@ -147,7 +165,7 @@ class Loop(object):
         connections = None
         elements = None
         
-        sector = self.map_data.get_sector(self.mouse.map_pos.x, self.mouse.map_pos.y)
+        #sector = self.map_data.get_sector(self.mouse.map_pos.x, self.mouse.map_pos.y)
         
         self.screen.fill(COLOR_BACKGROUND)
         
@@ -157,7 +175,10 @@ class Loop(object):
         #state = self.render_collision_box()
         self.render_debug_text(connections, state, elements, areas)
         
-        pygame.display.flip()
+        render.draw_point(self.screen, self.camera, self.point_start)
+        render.draw_point(self.screen, self.camera, self.point_end)
+        
+        pygame.display.flip()       
     
     
     def render_collision_box(self):
