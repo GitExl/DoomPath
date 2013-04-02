@@ -53,9 +53,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        wad_file = 'test/doom1.wad'
-        map_lump = 'E1M1'
-        mesh_file = 'test/doom1_e1m1.dpm'
+        wad_file = 'test/av.wad'
+        map_lump = 'MAP28'
+        mesh_file = 'test/av_map28.dpm'
         configuration = None
         
         print 'Loading map...'
@@ -156,7 +156,14 @@ class Loop(object):
             
         elif self.point_end is None:
             self.point_end = Vector3(x, y, z)
+            
             self.path = self.pathfinder.find(self.point_start, self.point_end)
+            
+            if self.path is None:
+                print 'No path could be found.'
+            else:
+                efficiency = round((len(self.path) / float(self.pathfinder.nodes_visited)) * 100, 1)
+                print 'Visited {} areas, path is {} areas. {} distance. {}% efficiency.'.format(self.pathfinder.nodes_visited, len(self.path), self.pathfinder.distance, efficiency) 
 
 
     def update_display(self):

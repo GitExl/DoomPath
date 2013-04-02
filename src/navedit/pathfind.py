@@ -1,5 +1,6 @@
 from nav.connection import Connection
 from nav.element import Element
+from util.priorityqueue import PriorityQueue
 import math
 
 
@@ -23,11 +24,20 @@ class PathNode(object):
     def __init__(self, area):
         self.area = area
         self.parent = None
+        self.parent_connection = None
         
         self.move_cost = 0
         self.heuristic_cost = 0
         self.total_cost = 0
         
+    
+    def __cmp__(self, other):
+        if other.total_cost < self.total_cost:
+            return -1
+        elif other.total_cost > self.total_cost:
+            return 1
+        
+        return 0
         
 
 class Pathfinder(object):
@@ -37,45 +47,44 @@ class Pathfinder(object):
         
         self.nodes = {}
         
+        self.nodes_visited = 0
+        self.distance = 0
+        
+        self.start = None
+        self.end = None
+        
         for area in nav_mesh.areas:
             self.nodes[area] = PathNode(area)
         
         
     def find(self, start, end):
-        visited = 0
+        self.nodes_visited = 0
+        self.distance = 0
+        self.start = start
+        self.end = end
         
         for area in self.nav_mesh.areas:
             area.path = False
             area.visited = False
         
-        open_list = set()
+        open_list = PriorityQueue()
         closed_list = set()
         
         area_start = self.nav_mesh.get_area_at(start, start.z)
         if area_start is None:
-            print 'Invalid start.'
-            return
+            return None
         
         area_end = self.nav_mesh.get_area_at(end, end.z)
         if area_end is None:
-            print 'Invalid end.'
-            return
+            return None
 
         open_list.add(self.nodes[area_start])
         while len(open_list) > 0:
-            lowest_cost = 0xffffffff
-            for node in open_list:
-                if node.total_cost < lowest_cost:
-                    node_current = node
-                    lowest_cost = node.total_cost
+            node_current = open_list.lowest()
             
             if node_current.area == area_end:
-                path_list = self.build_path(node_current, area_start)
-                
-                efficiency = round((len(path_list) / float(visited)) * 100, 1)
-                
-                print 'Visited {} areas, path is {} areas. {} distance. {}% efficiency.'.format(visited, len(path_list), node_current.move_cost, efficiency) 
-                return path_list
+                self.distance = node_current.move_cost
+                return self.build_path(node_current, area_start)
             
             open_list.remove(node_current)
             closed_list.add(node_current)
@@ -94,26 +103,13 @@ class Pathfinder(object):
                 if node_to in closed_list:
                     continue
                 
-                if (connection.flags & Connection.FLAG_TELEPORTER) != 0:
-                    move_cost = 0
-                else:
-                    cx1, cy1 = area_from.rect.get_center()
-                    cx2, cy2 = area_to.rect.get_center()
-                    move_cost = distance(cx1, cy1, cx2, cy2)
-                    
-                if (node_to.area.flags & Element.FLAG_DAMAGE_LOW) != 0:
-                    move_cost *= 2
-                elif (node_to.area.flags & Element.FLAG_DAMAGE_MEDIUM) != 0:
-                    move_cost *= 4
-                elif (node_to.area.flags & Element.FLAG_DAMAGE_HIGH) != 0:
-                    move_cost *= 8
-                                            
+                move_cost = self.get_move_cost(node_current.parent_connection, connection, node_to)
                 cost = node_current.move_cost + int(move_cost)
                 
                 best_score = False
                 if node_to not in open_list:
                     best_score = True
-                    cx1, cy1 = area_to.rect.get_center()
+                    cx1, cy1 = connection.rect.get_center()
                     node_to.heuristic_cost = distance(cx1, cy1, end.x, end.y)
                     open_list.add(node_to)
                     
@@ -127,12 +123,31 @@ class Pathfinder(object):
                     node_to.total_cost = node_to.move_cost + node_to.heuristic_cost
                     
                     node_to.area.visited = True
-                    visited += 1
-    
-        print 'No path could be found.'
-        
+                    self.nodes_visited += 1
+
         return None
+    
+    
+    def get_move_cost(self, connection_from, connection_to, node_to):
+        if (connection_to.flags & Connection.FLAG_TELEPORTER) != 0:
+            move_cost = 0
+        else:
+            if connection_from is None:
+                cx1, cy1 = self.start.x, self.start.y
+            else:
+                cx1, cy1 = connection_from.rect.get_center()
+            cx2, cy2 = connection_to.rect.get_center()
+            move_cost = distance(cx1, cy1, cx2, cy2)
             
+        if (node_to.area.flags & Element.FLAG_DAMAGE_LOW) != 0:
+            move_cost *= 2
+        elif (node_to.area.flags & Element.FLAG_DAMAGE_MEDIUM) != 0:
+            move_cost *= 4
+        elif (node_to.area.flags & Element.FLAG_DAMAGE_HIGH) != 0:
+            move_cost *= 8
+            
+        return move_cost
+    
         
     def build_path(self, end_node, area_start):
         node_path = []
