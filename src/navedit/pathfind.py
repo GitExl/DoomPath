@@ -1,11 +1,6 @@
 from nav.connection import Connection
 from nav.element import Element
 from util.priorityqueue import PriorityQueue
-import math
-
-
-def distance(x1, y1, x2, y2):
-    return math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1))
 
 
 class PathNode(object):
@@ -63,10 +58,6 @@ class Pathfinder(object):
         self.start = start
         self.end = end
         
-        for area in self.nav_mesh.areas:
-            area.path = False
-            area.visited = False
-        
         open_list = PriorityQueue()
         closed_list = set()
         
@@ -83,7 +74,7 @@ class Pathfinder(object):
             node_current = open_list.lowest()
             
             if node_current.area == area_end:
-                self.distance = node_current.move_cost
+                self.distance = int(node_current.move_cost)
                 return self.build_path(node_current, area_start)
             
             open_list.remove(node_current)
@@ -98,19 +89,19 @@ class Pathfinder(object):
                     area_to = connection.area_a
                 else:
                     continue
+
                 node_to = self.nodes[area_to]
-                
                 if node_to in closed_list:
                     continue
                 
                 move_cost = self.get_move_cost(node_current.parent_connection, connection, node_to)
-                cost = node_current.move_cost + int(move_cost)
+                cost = node_current.move_cost + move_cost
                 
                 best_score = False
                 if node_to not in open_list:
                     best_score = True
-                    cx1, cy1 = connection.rect.get_center()
-                    node_to.heuristic_cost = distance(cx1, cy1, end.x, end.y)
+                    cx1, cy1 = connection.center
+                    node_to.heuristic_cost = (end.x - cx1) * (end.x - cx1) + (end.y - cy1) * (end.y - cy1)
                     open_list.add(node_to)
                     
                 elif cost < node_to.move_cost:
@@ -135,9 +126,9 @@ class Pathfinder(object):
             if connection_from is None:
                 cx1, cy1 = self.start.x, self.start.y
             else:
-                cx1, cy1 = connection_from.rect.get_center()
-            cx2, cy2 = connection_to.rect.get_center()
-            move_cost = distance(cx1, cy1, cx2, cy2)
+                cx1, cy1 = connection_from.center
+            cx2, cy2 = connection_to.center
+            move_cost = (cx2 - cx1) * (cx2 - cx1) + (cy2 - cy1) * (cy2 - cy1)
             
         if (node_to.area.flags & Element.FLAG_DAMAGE_LOW) != 0:
             move_cost *= 2

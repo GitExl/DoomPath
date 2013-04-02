@@ -1,13 +1,13 @@
 from doom import wad
 from doom.map.data import MapData
 from nav.config import Config
-from nav.grid import Grid
 from nav.mesh import Mesh
 from navedit import pathfind
 from util.vector import Vector2, Vector3
 import cProfile
 import camera
 import pygame
+import random
 import render
 import sys
 
@@ -95,6 +95,25 @@ class Loop(object):
         self.pathfinder = pathfind.Pathfinder(self.nav_mesh)
         
         return True
+    
+    
+    def benchmark_pathfinder(self):
+        random.seed(1751987)
+        start = Vector3()
+        end = Vector3()
+        for _ in range(5000):
+            start.x = random.randint(self.map_data.min.x, self.map_data.max.x)
+            start.y = random.randint(self.map_data.min.y, self.map_data.max.y)
+            start.z = self.map_data.get_floor_z(start.x, start.y)
+            
+            end.x = random.randint(self.map_data.min.x, self.map_data.max.x)
+            end.y = random.randint(self.map_data.min.y, self.map_data.max.y)
+            end.z = self.map_data.get_floor_z(end.x, end.y)
+            
+            path = self.pathfinder.find(start, end)
+            if path is not None:
+                efficiency = round((len(path) / float(self.pathfinder.nodes_visited)) * 100, 1)
+                print 'Visited {} areas, path is {} areas. {} distance. {}% efficiency.'.format(self.pathfinder.nodes_visited, len(path), self.pathfinder.distance, efficiency)
         
         
     def loop_start(self):
@@ -157,8 +176,11 @@ class Loop(object):
         elif self.point_end is None:
             self.point_end = Vector3(x, y, z)
             
-            self.path = self.pathfinder.find(self.point_start, self.point_end)
+            for area in self.nav_mesh.areas:
+                area.path = False
+                area.visited = False
             
+            self.path = self.pathfinder.find(self.point_start, self.point_end)            
             if self.path is None:
                 print 'No path could be found.'
             else:
@@ -264,7 +286,7 @@ class Loop(object):
 
 if __name__ == '__main__':   
     loop = Loop()
-    #cProfile.run('loop.loop_init()', sort=1)
     if loop.loop_init() == False:
         sys.exit()
+    #cProfile.run('loop.benchmark_pathfinder()', sort=1)
     loop.loop_start()

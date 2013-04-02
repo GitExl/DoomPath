@@ -86,7 +86,15 @@ class Mesh(object):
         print 'Connecting teleporters...'
         self.connect_teleporters()
         
+        self.process_connections()
+        
         return True
+
+
+    def process_connections(self):
+        for area in self.areas:
+            for connection in area.connections:
+                connection.center = connection.rect.get_center()
 
 
     def get_area_at(self, pos2, z):
@@ -706,3 +714,4 @@ class Mesh(object):
                     connection.area_b = None
         
         self.map_data = map_data
+        self.process_connections()

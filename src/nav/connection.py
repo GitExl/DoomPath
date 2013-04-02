@@ -1,4 +1,5 @@
 from util.rectangle import Rectangle
+from util.vector import Vector2
 import math
 
 
@@ -11,7 +12,8 @@ class Connection(object):
         'rect',
         'flags',        
         'area_a', 'area_b',
-        'linedef'
+        'linedef',
+        'center'
     )
 
     
@@ -40,6 +42,9 @@ class Connection(object):
         
         # Can refer to a linedef that belongs to this connection, in case of a teleporter.
         self.linedef = None
+        
+        # The center point of this connection rectangle.
+        self.center = (0, 0)
 
 
     def get_flags_string(self):
@@ -58,11 +63,3 @@ class Connection(object):
     
     def __repr__(self):
         return 'connection {}, {}, linedef {}'.format(self.rect, self.get_flags_string(), self.linedef)
-    
-    
-    def __hash__(self):
-        return hash((self.rect, self.flags, self.area_a, self.area_b, self.linedef))
-    
-    
-    def __eq__(self, other):
-        return (self.rect, self.flags, self.area_a, self.area_b, self.linedef) == (other.rect, other.flags, other.area_a, other.area_b, other.linedef)
