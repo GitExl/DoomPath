@@ -13,8 +13,8 @@ COLOR_LINEDEF_HIGHLIGHT = pygame.Color(255, 100, 0, 255)
 
 COLOR_THING = pygame.Color(0, 255, 0, 255)
 
-COLOR_AREA_FILL = pygame.Color(15, 15, 15, 255)
-COLOR_AREA_HIGHLIGHT = pygame.Color(63, 63, 63, 255)
+COLOR_AREA_FILL = pygame.Color(31, 31, 31, 255)
+COLOR_AREA_HIGHLIGHT = pygame.Color(91, 91, 91, 255)
 COLOR_AREA_PATH = pygame.Color(255, 255, 63, 255)
 COLOR_AREA_VISITED = pygame.Color(127, 127, 31, 255)
 COLOR_AREA_BORDER = pygame.Color(191, 95, 0, 255)
@@ -170,9 +170,9 @@ def render_mesh(nav_mesh, map_data, surface, camera, mouse_pos):
             selected_areas.append(area)
         else:
             color = COLOR_AREA_FILL
-        
+  
         x = (area.rect.left - camera.x) * camera.zoom
-        y = (area.rect.top- camera.y) * camera.zoom
+        y = (area.rect.top - camera.y) * camera.zoom
         width = (area.rect.right - area.rect.left) * camera.zoom
         height = (area.rect.bottom - area.rect.top) * camera.zoom
         
@@ -198,7 +198,7 @@ def render_mesh(nav_mesh, map_data, surface, camera, mouse_pos):
         rect = pygame.Rect(x, y, width, height)
         
         surface.fill(color, rect, special_flags=pygame.BLEND_ADD)
-        pygame.draw.rect(surface, COLOR_AREA_BORDER, rect, 1)
+        #pygame.draw.rect(surface, COLOR_AREA_BORDER, rect, 1)
         
         render_connections.extend(area.connections)
 

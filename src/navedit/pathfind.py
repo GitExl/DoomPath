@@ -1,6 +1,7 @@
 from nav.connection import Connection
 from nav.element import Element
 from util.priorityqueue import PriorityQueue
+import math
 
 
 class PathNode(object):
@@ -27,9 +28,9 @@ class PathNode(object):
         
     
     def __cmp__(self, other):
-        if other.total_cost < self.total_cost:
+        if other.total_cost > self.total_cost:
             return -1
-        elif other.total_cost > self.total_cost:
+        elif other.total_cost < self.total_cost:
             return 1
         
         return 0
@@ -69,40 +70,35 @@ class Pathfinder(object):
         if area_end is None:
             return None
 
-        open_list.add(self.nodes[area_start])
+        open_list.push(self.nodes[area_start])
         while len(open_list) > 0:
-            node_current = open_list.lowest()
+            node_current = open_list.pop_lowest()
             
             if node_current.area == area_end:
                 self.distance = int(node_current.move_cost)
                 return self.build_path(node_current, area_start)
             
-            open_list.remove(node_current)
             closed_list.add(node_current)
             
             for connection in node_current.area.connections:
-                area_from = node_current.area
-                
-                if area_from == connection.area_a and (connection.flags & Connection.FLAG_AB):
-                    area_to = connection.area_b
-                elif area_from == connection.area_b and (connection.flags & Connection.FLAG_BA):
-                    area_to = connection.area_a
+                if node_current.area == connection.area_a and (connection.flags & Connection.FLAG_AB):
+                    node_to = self.nodes[connection.area_b]
+                elif node_current.area == connection.area_b and (connection.flags & Connection.FLAG_BA):
+                    node_to = self.nodes[connection.area_a]
                 else:
                     continue
 
-                node_to = self.nodes[area_to]
                 if node_to in closed_list:
                     continue
                 
-                move_cost = self.get_move_cost(node_current.parent_connection, connection, node_to)
-                cost = node_current.move_cost + move_cost
+                cost = node_current.move_cost + self.get_move_cost(node_current.parent_connection, connection, node_to)
                 
                 best_score = False
                 if node_to not in open_list:
                     best_score = True
                     cx1, cy1 = connection.center
-                    node_to.heuristic_cost = (end.x - cx1) * (end.x - cx1) + (end.y - cy1) * (end.y - cy1)
-                    open_list.add(node_to)
+                    node_to.heuristic_cost = (abs(end.x - cx1) + abs(end.y - cy1))
+                    open_list.push(node_to)
                     
                 elif cost < node_to.move_cost:
                     best_score = True
@@ -128,7 +124,7 @@ class Pathfinder(object):
             else:
                 cx1, cy1 = connection_from.center
             cx2, cy2 = connection_to.center
-            move_cost = (cx2 - cx1) * (cx2 - cx1) + (cy2 - cy1) * (cy2 - cy1)
+            move_cost = abs(cx2 - cx1) + abs(cy2 - cy1)
             
         if (node_to.area.flags & Element.FLAG_DAMAGE_LOW) != 0:
             move_cost *= 2

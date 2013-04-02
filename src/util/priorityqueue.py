@@ -8,20 +8,15 @@ class PriorityQueue(object):
         self.item_set = set()
     
         
-    def add(self, item):
+    def push(self, item):
         heapq.heappush(self.item_list, item)
         self.item_set.add(item)
     
     
-    def remove(self, item):
-        self.item_list.remove(item)
-        self.item_set.remove(item)
-    
-    
-    def lowest(self):
-        return self.item_list[0]
-    
-    
+    def pop_lowest(self):
+        return heapq.heappop(self.item_list)
+
+
     def __len__(self):
         return len(self.item_list)
     

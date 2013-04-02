@@ -53,9 +53,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        wad_file = 'test/av.wad'
-        map_lump = 'MAP28'
-        mesh_file = 'test/av_map28.dpm'
+        wad_file = 'test/doom.wad'
+        map_lump = 'E1M3'
+        mesh_file = 'test/doom_e1m3.dpm'
         configuration = None
         
         print 'Loading map...'
@@ -111,7 +111,7 @@ class Loop(object):
             end.z = self.map_data.get_floor_z(end.x, end.y)
             
             path = self.pathfinder.find(start, end)
-            if path is not None:
+            if path is not None and self.pathfinder.nodes_visited > 0:
                 efficiency = round((len(path) / float(self.pathfinder.nodes_visited)) * 100, 1)
                 print 'Visited {} areas, path is {} areas. {} distance. {}% efficiency.'.format(self.pathfinder.nodes_visited, len(path), self.pathfinder.distance, efficiency)
         
@@ -185,8 +185,8 @@ class Loop(object):
                 print 'No path could be found.'
             else:
                 efficiency = round((len(self.path) / float(self.pathfinder.nodes_visited)) * 100, 1)
-                print 'Visited {} areas, path is {} areas. {} distance. {}% efficiency.'.format(self.pathfinder.nodes_visited, len(self.path), self.pathfinder.distance, efficiency) 
-
+                print 'Visited {} areas, path is {} areas. {} distance. {}% efficiency.'.format(self.pathfinder.nodes_visited, len(self.path), self.pathfinder.distance, efficiency)
+                    
 
     def update_display(self):
         sector = -1
@@ -288,5 +288,5 @@ if __name__ == '__main__':
     loop = Loop()
     if loop.loop_init() == False:
         sys.exit()
-    #cProfile.run('loop.benchmark_pathfinder()', sort=1)
+    cProfile.run('loop.benchmark_pathfinder()', sort=1)
     loop.loop_start()

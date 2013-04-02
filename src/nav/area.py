@@ -22,7 +22,7 @@ class Area(object):
         'inside_rect',
         
         'path',
-        'visited',
+        'visited'
     )
     
 
