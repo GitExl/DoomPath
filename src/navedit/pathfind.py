@@ -1,7 +1,5 @@
-from nav.area import Area
 from nav.connection import Connection
 from nav.element import Element
-import heapq
 import math
 
 
@@ -13,6 +11,7 @@ class PathNode(object):
 
     __slots__ = (
         'parent',
+        'parent_connection',
         'area',
         
         'move_cost',
@@ -73,9 +72,9 @@ class Pathfinder(object):
             if node_current.area == area_end:
                 path_list = self.build_path(node_current, area_start)
                 
-                efficiency = round(len(path_list) / float(visited), 2)
+                efficiency = round((len(path_list) / float(visited)) * 100, 1)
                 
-                print 'Visited {} areas, path is {} areas. {}% efficiency.'.format(visited, len(path_list), efficiency) 
+                print 'Visited {} areas, path is {} areas. {} distance. {}% efficiency.'.format(visited, len(path_list), node_current.move_cost, efficiency) 
                 return path_list
             
             open_list.remove(node_current)
@@ -98,15 +97,18 @@ class Pathfinder(object):
                 if (connection.flags & Connection.FLAG_TELEPORTER) != 0:
                     move_cost = 0
                 else:
-                    if (node_to.area.flags & Element.FLAG_DAMAGE_LOW) != 0:
-                        move_cost = 2
-                    elif (node_to.area.flags & Element.FLAG_DAMAGE_MEDIUM) != 0:
-                        move_cost = 4
-                    elif (node_to.area.flags & Element.FLAG_DAMAGE_HIGH) != 0:
-                        move_cost = 8
-                    else:
-                        move_cost = 1
-                cost = node_current.move_cost + move_cost
+                    cx1, cy1 = area_from.rect.get_center()
+                    cx2, cy2 = area_to.rect.get_center()
+                    move_cost = distance(cx1, cy1, cx2, cy2)
+                    
+                if (node_to.area.flags & Element.FLAG_DAMAGE_LOW) != 0:
+                    move_cost *= 2
+                elif (node_to.area.flags & Element.FLAG_DAMAGE_MEDIUM) != 0:
+                    move_cost *= 4
+                elif (node_to.area.flags & Element.FLAG_DAMAGE_HIGH) != 0:
+                    move_cost *= 8
+                                            
+                cost = node_current.move_cost + int(move_cost)
                 
                 best_score = False
                 if node_to not in open_list:
@@ -120,6 +122,7 @@ class Pathfinder(object):
                     
                 if best_score == True:
                     node_to.parent = node_current
+                    node_to.parent_connection = connection
                     node_to.move_cost = cost
                     node_to.total_cost = node_to.move_cost + node_to.heuristic_cost
                     
@@ -141,6 +144,10 @@ class Pathfinder(object):
             end_node = end_node.parent
         
         end_node.area.path = True
-        
         node_path.reverse()
-        return node_path
+        
+        connection_path = []
+        for node in node_path:
+            connection_path.append(node.parent_connection)
+        
+        return connection_path

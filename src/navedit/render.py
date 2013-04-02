@@ -26,8 +26,31 @@ CONNECTION_TELEPORT_SIZE = 6
 
 COLOR_POINT = pygame.Color(255, 31, 0, 255)
 
+COLOR_PATH = pygame.Color(191, 15, 15, 255)
+PATH_LINE_SIZE = 12
+
 grid_colors = None
 grid_colors_special = None
+
+
+def draw_connection_path(surface, camera, start, end, path):
+    if start is None or end is None or path is None:
+        return
+    
+    x1, y1 = start.x, start.y
+    
+    for connection in path:
+        x2, y2 = connection.rect.get_center()        
+        p1 = camera.map_to_screen(x1, y1)
+        p2 = camera.map_to_screen(x2, y2)
+        pygame.draw.line(surface, COLOR_PATH, p1, p2, int(PATH_LINE_SIZE * camera.zoom))
+        
+        x1, y1 = x2, y2
+    
+    x2, y2 = end.x, end.y
+    p1 = camera.map_to_screen(x1, y1)
+    p2 = camera.map_to_screen(x2, y2)
+    pygame.draw.line(surface, COLOR_PATH, p1, p2, int(PATH_LINE_SIZE * camera.zoom))
 
 
 def draw_point(surface, camera, pos2):
@@ -65,10 +88,10 @@ def render_map(map_data, surface, camera, config, sector_mark):
         else:
             color = COLOR_LINEDEF_2SIDED
             
-        x1 = (linedef.vertex1.x - cx) * cz
-        y1 = (linedef.vertex1.y - cy) * cz
-        x2 = (linedef.vertex2.x - cx) * cz
-        y2 = (linedef.vertex2.y - cy) * cz
+        x1 = int((linedef.vertex1.x - cx) * cz)
+        y1 = int((linedef.vertex1.y - cy) * cz)
+        x2 = int((linedef.vertex2.x - cx) * cz)
+        y2 = int((linedef.vertex2.y - cy) * cz)
         
         linefunc(surface, color, (x1, y1), (x2, y2), 1)
     
@@ -85,7 +108,7 @@ def render_map(map_data, surface, camera, config, sector_mark):
         center_pos = map_data.get_sector_center(sector_mark)
         center_pos.x, center_pos.y = camera.map_to_screen(center_pos.x, center_pos.y)
         
-        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (int(center_pos.x), int(center_pos.y)), int(5 * camera.zoom))
+        pygame.draw.circle(surface, COLOR_LINEDEF_HIGHLIGHT, (center_pos.x, center_pos.y), int(5 * camera.zoom))
         
     color = COLOR_THING
     for thing_index in things:
@@ -94,8 +117,7 @@ def render_map(map_data, surface, camera, config, sector_mark):
         if thing_def is None:
             continue
 
-        x, y = camera.map_to_screen(thing.x, thing.y)
-        pos = (int(x), int(y))
+        pos = camera.map_to_screen(thing.x, thing.y)
         radius = int((thing_def.radius / 3) * camera.zoom)
         if radius >= 1:
             pygame.draw.circle(surface, color, pos, radius)

@@ -36,8 +36,8 @@ class Camera(object):
         
         
     def screen_to_map(self, x, y):
-        return (x / self.zoom) + self.x, (y / self.zoom) + self.y
+        return int((x / self.zoom) + self.x), int((y / self.zoom) + self.y)
     
     
     def map_to_screen(self, x, y):
-        return (x - self.x) * self.zoom, (y - self.y) * self.zoom
+        return int((x - self.x) * self.zoom), int((y - self.y) * self.zoom)

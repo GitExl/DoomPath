@@ -41,6 +41,7 @@ class Loop(object):
         self.nav_mesh = None
         
         self.pathfinder = None
+        self.path = None
         self.point_start = None
         self.point_end = None
         
@@ -52,9 +53,9 @@ class Loop(object):
                 
         
     def loop_init(self):
-        wad_file = 'test/dv.wad'
-        map_lump = 'MAP05'
-        mesh_file = 'test/dv_map05.dpm'
+        wad_file = 'test/doom1.wad'
+        map_lump = 'E1M1'
+        mesh_file = 'test/doom1_e1m1.dpm'
         configuration = None
         
         print 'Loading map...'
@@ -155,7 +156,7 @@ class Loop(object):
             
         elif self.point_end is None:
             self.point_end = Vector3(x, y, z)
-            self.pathfinder.find(self.point_start, self.point_end)
+            self.path = self.pathfinder.find(self.point_start, self.point_end)
 
 
     def update_display(self):
@@ -175,6 +176,7 @@ class Loop(object):
         #state = self.render_collision_box()
         self.render_debug_text(connections, state, elements, areas)
         
+        render.draw_connection_path(self.screen, self.camera, self.point_start, self.point_end, self.path)
         render.draw_point(self.screen, self.camera, self.point_start)
         render.draw_point(self.screen, self.camera, self.point_end)
         
