@@ -21,6 +21,7 @@ class Area(object):
         'elements',        
         'inside_rect',
         
+        'index',
         'path',
         'visited'
     )
@@ -61,6 +62,7 @@ class Area(object):
         self.elements = []
         self.inside_rect = Rectangle()
         
+        self.index = -1
         self.path = False
         self.visited = False
 

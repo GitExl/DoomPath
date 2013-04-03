@@ -86,15 +86,7 @@ class Mesh(object):
         print 'Connecting teleporters...'
         self.connect_teleporters()
         
-        self.process_connections()
-        
         return True
-
-
-    def process_connections(self):
-        for area in self.areas:
-            for connection in area.connections:
-                connection.center = connection.rect.get_center()
 
 
     def get_area_at(self, pos2, z):
@@ -276,6 +268,7 @@ class Mesh(object):
                         connection.area_a = area
                         connection.area_b = other_area
                         connection.rect.copy_from(rect)
+                        connection.center = connection.rect.get_center()
                         
                     area.connections.append(connection)
                     
@@ -676,6 +669,7 @@ class Mesh(object):
                     linedef = None
                 
                 connection.rect.set(left, top, right, bottom)
+                connection.center = connection.rect.get_center()
                 connection.area_a = area_a_hash
                 connection.area_b = area_b_hash
                 connection.linedef = linedef
@@ -684,7 +678,7 @@ class Mesh(object):
             
             # Read mesh areas.
             area_count = Mesh.FILE_AREAS_HEADER.unpack(f.read(Mesh.FILE_AREAS_HEADER.size))[0]
-            for _ in range(area_count):
+            for index in range(area_count):
                 area_hash, left, top, right, bottom, z, plane_hash, sector_index, flags, connection_count = Mesh.FILE_AREA.unpack(f.read(Mesh.FILE_AREA.size))
                 
                 area = Area(left, top, right, bottom, z)
@@ -692,6 +686,7 @@ class Mesh(object):
                     sector_index = None
                 area.sector = sector_index
                 area.flags = flags
+                area.index = index
                 if plane_hash != 0:
                     area.plane = plane_hashes[plane_hash]
                 
@@ -714,4 +709,3 @@ class Mesh(object):
                     connection.area_b = None
         
         self.map_data = map_data
-        self.process_connections()
