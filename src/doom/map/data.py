@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding=utf8
 
-from doom.map import blockmap
+from doom.map import blockmap, actions
 from doom.map.objects import Thing, Linedef, Sidedef, Vertex, Segment, SubSector, Sector, Node
 from doom.map.setup import MapSetup
 from util.vector import Vector2, Vector3
@@ -28,6 +28,9 @@ class MapData(object):
         # Additional map data, generated from raw data.
         self.linedef_ids = None
         self.teleporters = None
+        
+        # Registered action types.
+        self.action_types = actions.ActionTypes()
         
         # Hash of relevant map data.
         self.hasher = hashlib.md5()
@@ -374,8 +377,10 @@ class MapData(object):
             sector.damage = 20
         elif effect == 'ignore':
             sector.flags |= Sector.FLAG_IGNORE
-        elif effect == 'moves':
-            sector.flags |= Sector.FLAG_MOVES
+        elif effect == 'floor_moves':
+            sector.flags |= Sector.FLAG_FLOOR_MOVES
+        elif effect == 'ceiling_moves':
+            sector.flags |= Sector.FLAG_CEILING_MOVES
         else:
             print 'Unknown sector effect "{}"!'.format(effect)
             

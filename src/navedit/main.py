@@ -288,5 +288,5 @@ if __name__ == '__main__':
     loop = Loop()
     if loop.loop_init() == False:
         sys.exit()
-    cProfile.run('loop.benchmark_pathfinder()', sort=1)
+    #cProfile.run('loop.benchmark_pathfinder()', sort=1)
     loop.loop_start()

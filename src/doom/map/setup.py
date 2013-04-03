@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #coding=utf8
 
+from doom.map.actions import Action
 from doom.map.objects import Teleporter, Segment, Linedef, Sector
 from doom.map.plane import plane_setup
 from util.vector import Vector2
@@ -34,6 +35,7 @@ class MapSetup(object):
         Sets up all additional map data.
         """
         
+        self.setup_lineactions()
         self.setup_sector_data()
         self.setup_thing_data()
         self.setup_bounds()
@@ -45,6 +47,16 @@ class MapSetup(object):
         self.setup_teleporters()
     
     
+    def setup_lineactions(self):
+        """
+        Builds a database of action types.
+        """
+        
+        for index, keywords in self.config.linedef_specials.iteritems():
+            index = int(index)
+            self.map_data.action_types.add(index, keywords)
+    
+    
     def setup_teleporters(self):
         """
         Builds a list of teleporter objects that reference teleport source and destination locations.
@@ -52,9 +64,22 @@ class MapSetup(object):
         
         self.map_data.teleporters = []
         for line_index, linedef in enumerate(self.map_data.linedefs):
+            action = self.map_data.action_types.get(linedef.action)
+            if action is None:
+                continue
+            if action.type != Action.TYPE_TELEPORTER:
+                continue
+            
+            # Line to line teleporters.
+            if (action.flags & Action.FLAG_TELEPORT_LINE) != 0:
+                kind = Teleporter.TELEPORTER_LINE
+                dest_line = self.map_data.get_line_destination(line_index)
+                if dest_line is None:
+                    print 'Teleporter linedef {} has no valid destination linedef.'.format(line_index)
+                    continue
             
             # Line to thing teleporters.
-            if linedef.action in self.config.thing_teleport_specials:
+            else:
                 kind = Teleporter.TELEPORTER_THING
                 target_thing = self.get_destination_from_teleport(line_index)
                 if target_thing is None:
@@ -62,17 +87,6 @@ class MapSetup(object):
                     continue
                 
                 dest = Vector2(target_thing.x, target_thing.y)
-                
-            # Line to line teleporters.
-            elif linedef.action in self.config.line_teleport_specials:
-                kind = Teleporter.TELEPORTER_LINE
-                dest_line = self.map_data.get_line_destination(line_index)
-                if dest_line is None:
-                    print 'Teleporter linedef {} has no valid destination linedef.'.format(line_index)
-                    continue
-    
-            else:
-                continue
     
             # Construct and add teleporter to list.
             teleporter = Teleporter()
@@ -156,19 +170,12 @@ class MapSetup(object):
         """
     
         for linedef in self.map_data.linedefs:
-            action = linedef.action
-            
-            is_boom = (action >= 0x3000 and action <= 0x33FF)
-            if not action in self.config.stair_specials and not is_boom:
+            action = self.map_data.action_types.get(linedef.action)
+            if action is None:
                 continue
-            
-            # Stair actions start at 0x3000. floor texture ignorance starts at 0x200 in stair action, shifted by 9 bits.
-            if is_boom:
-                action = action - 0x3000
-                ignore_floor_texture = (((action - 0x0200) >> 9) & 0x1) == 0
-            else:
-                ignore_floor_texture = False
-            
+            if action.type != Action.TYPE_STAIRS:
+                continue
+
             if self.map_data.is_hexen:
                 tag = linedef.args[0]
             else:
@@ -183,7 +190,7 @@ class MapSetup(object):
                 # there is no more shared linedef or the floor texture is different. 
                 while True:
                     current_sector = self.map_data.sectors[current_sector_index]
-                    current_sector.flags |= Sector.FLAG_MOVES | Sector.FLAG_SPECIAL
+                    current_sector.flags |= Sector.FLAG_FLOOR_MOVES | Sector.FLAG_SPECIAL
                     
                     # Find next sector to mark as special.
                     for sector_linedef in current_sector.linedefs:
@@ -206,7 +213,7 @@ class MapSetup(object):
                         break
     
                     # Test if the next floor needs to have the same texture.
-                    if ignore_floor_texture == False:
+                    if (action.flags & Action.FLAG_IGNORE_FLOOR) == 0:
                         next_sector = self.map_data.sectors[next_sector_index]
                         if next_sector.texture_floor != current_sector.texture_floor:
                             break
@@ -404,13 +411,13 @@ class MapSetup(object):
         """ 
         
         for sector_index, sector in enumerate(self.map_data.sectors):
-            special = sector.action
+            action = sector.action
             tag = sector.tag
-            value = self.config.sector_types.get(special)
+            value = self.config.sector_types.get(action)
             
             # Special tagged sectors will move.
             if tag == 667 or tag == 666:
-                self.map_data.apply_extra_effect(sector_index, 'moves')
+                self.map_data.apply_extra_effect(sector_index, 'floor_moves')
             
             # Registered special sector types can be marked too.
             elif value is not None:
@@ -419,50 +426,54 @@ class MapSetup(object):
             # Some Boom generalized sector types can move too.
             else:
                 for flag, value in self.config.sector_generalized_types.iteritems():
-                    if (special & flag) != 0:
+                    if (action & flag) != 0:
                         self.map_data.apply_extra_effect(sector_index, value)
             
         # Detect more complex linedef activation.
         for linedef in self.map_data.linedefs:
-            line_type = linedef.action
+            action = self.map_data.action_types.get(linedef.action)
+            if action is None:
+                continue
+            
             if self.map_data.is_hexen:
                 line_tag = linedef.args[0]
             else:
                 line_tag = linedef.tag
                 
             # The line activates the sector on it's back side?
-            if line_tag == 0 and line_type in self.config.backside_activation_specials:
+            if action.activation == Action.ACTIVATE_PUSH:
                 sidedef = linedef.sidedef_back
                 if sidedef != Linedef.SIDEDEF_NONE:
                     sidedef = self.map_data.sidedefs[sidedef]
                     sector_index = sidedef.sector
-                    self.map_data.apply_extra_effect(sector_index, 'moves')
+                    
+                    movement_type = self.get_action_movement_type(action)
+                    for keyword in movement_type:
+                        self.map_data.apply_extra_effect(sector_index, keyword)
             
             # The line activates a tagged sector?
-            elif line_tag != 0 and (line_type in self.config.tag_activation_specials or line_type in self.config.backside_activation_specials):
-                target_sectors = self.map_data.get_tag_sectors(line_tag)
-                for sector_index in target_sectors:
-                    self.map_data.apply_extra_effect(sector_index, 'moves')
-                    
-            # The line has a Boom generalized action?
-            elif self.config.generalized_specials is not None and line_type >= 0x2F80:
+            elif line_tag != 0:
+                target_sectors = self.map_data.get_tag_sectors(line_tag)                
+                movement_type = self.get_action_movement_type(action)
                 
-                for shift in self.config.generalized_specials:
-                    # Sector tag activation of switch, walk and shoot triggers.
-                    activation_type = ((line_type - shift) & 0x7)
-                    if line_tag != 0:
-                        target_sectors = self.map_data.get_tag_sectors(line_tag)
-                        for sector_index in target_sectors:
-                            self.map_data.apply_extra_effect(sector_index, 'moves')
-                    
-                    # Backside activation of door triggers.
-                    elif activation_type >= 6 and line_tag == 0:
-                        sidedef = linedef.sidedef_back
-                        if sidedef != Linedef.SIDEDEF_NONE:
-                            sidedef = self.map_data.sidedefs[sidedef]
-                            sector_index = sidedef.sector
-                            self.map_data.apply_extra_effect(sector_index, 'moves')
+                for sector_index in target_sectors:
+                    for keyword in movement_type:
+                        self.map_data.apply_extra_effect(sector_index, keyword)
                             
+                            
+    def get_action_movement_type(self, action):
+        """
+        Returns a list of movement types exhibited by a linedef action object.
+        """
+        
+        if action.type == Action.TYPE_CEILING or action.type == Action.TYPE_CRUSHER or \
+          action.type == Action.TYPE_DOOR or action.type == Action.TYPE_DOOR_LOCKED:
+            return ['ceiling_moves']
+        elif action.type == Action.TYPE_ELEVATOR:
+            return ['floor_moves', 'ceiling_moves']
+        else:
+            return ['floor_moves']
+    
     
     def get_destination_from_teleport(self, linedef_index):
         """

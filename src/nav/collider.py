@@ -37,8 +37,9 @@ class PositionState(object):
         # Blocked by a steep slope.
         self.steep = False
         
-        # This position can move during gameplay (due to sectors).
-        self.moves = False
+        # The element's sector's ceiling or floor can move during gameplay.
+        self.floor_moves = False
+        self.ceiling_moves = False
         
         # This position's special sector index.
         self.special_sector = None
@@ -160,8 +161,16 @@ class Collider(object):
             collision = True
         
         # Ceiling is too low.
-        elif state.pos.z + height > state.ceilz and state.special_sector is None:
-            collision = True
+        elif state.pos.z + height > state.ceilz:
+            if state.special_sector is None:
+                collision = True
+            
+            # No moving ceiling in the special sector means we should still collide.
+            elif (self.map_data.sectors[state.special_sector].flags & Sector.FLAG_CEILING_MOVES) == 0:
+                collision = True
+                
+            else:
+                collision = False
         
         # Z is below floor.
         elif state.pos.z < state.floorz:
@@ -333,7 +342,8 @@ class Collider(object):
             state.floor_plane = floor_sector.floor_plane
             
         # Detect any moving sectors.
-        state.moves = (floor_sector.flags & Sector.FLAG_MOVES) != 0 or state.moves
+        state.floor_moves = ((floor_sector.flags & Sector.FLAG_FLOOR_MOVES) != 0) or state.floor_moves
+        state.ceiling_moves = ((floor_sector.flags & Sector.FLAG_CEILING_MOVES) != 0) or state.ceiling_moves
         
         # Choose tightest floor and ceiling fit.
         state.floorz = max(state.floorz, sector_floor_z)

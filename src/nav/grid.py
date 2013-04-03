@@ -71,7 +71,9 @@ class Grid(object):
         sector = self.map_data.sectors[sector_index]
         self.set_element_properties(sector_index, element)
         
-        if (sector.flags & Sector.FLAG_MOVES) != 0:
+        if (sector.flags & Sector.FLAG_FLOOR_MOVES) != 0:
+            element.special_sector = sector_index
+        if (sector.flags & Sector.FLAG_CEILING_MOVES) != 0:
             element.special_sector = sector_index
         
         # Schedule for examination.
@@ -415,7 +417,7 @@ class Grid(object):
                     jump = True
                     
                 # If the sector moves during the game, ignore any higher height difference.
-                elif state.moves == False:
+                elif state.floor_moves == False:
                     return Grid.REASON_TOO_HIGH, None
                 
         # Steep slopes cannot be walked up, only down.
@@ -423,7 +425,7 @@ class Grid(object):
             return Grid.REASON_SLOPE_TOO_STEEP, None
         
         # Snap to moving sector floor.
-        if state.moves == True:
+        if state.floor_moves == True:
             check_pos.z = state.floorz
         
         # Set origin element jumping flags.
@@ -441,7 +443,9 @@ class Grid(object):
         check_pos.z = min(check_pos.z, state.floorz)
         
         # Player cannot fit in the sector.
-        if (check_pos.z < state.floorz or check_pos.z + self.element_height > state.ceilz) and (state.moves == False or state.blockthing == True): 
+        if ((check_pos.z < state.floorz and state.floor_moves == False) or \
+          (check_pos.z + self.element_height > state.ceilz and state.ceiling_moves == False)) and \
+          state.blockthing == True: 
             return Grid.REASON_CANNOT_FIT, None
                               
         # See if an element exists in the updated location.
@@ -456,7 +460,7 @@ class Grid(object):
                 self.set_element_properties(state.special_sector, new_element)
             if state.floor_plane is not None:
                 new_element.plane = state.floor_plane                
-            if state.moves == True:
+            if state.floor_moves == True or state.ceiling_moves == True:
                 new_element.special_sector = state.special_sector
             
             self.element_tasks.append(new_element)

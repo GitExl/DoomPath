@@ -270,8 +270,9 @@ class Sector(MapObject):
     
     # Internal flags.
     FLAG_SPECIAL = 0x1
-    FLAG_MOVES = 0x2
-    FLAG_IGNORE = 0x4
+    FLAG_FLOOR_MOVES = 0x2
+    FLAG_CEILING_MOVES = 0x4
+    FLAG_IGNORE = 0x8
 
 
     def __init__(self):
