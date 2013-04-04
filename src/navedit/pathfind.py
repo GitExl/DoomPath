@@ -100,7 +100,7 @@ class Pathfinder(object):
                     continue
                 
                 # Determine the cost to move to this node.
-                cost = node_current.move_cost + self.get_move_cost(node_current.parent_connection, connection, node_to)
+                cost = node_current.move_cost + self.get_move_cost(node_current.parent_connection, connection, node_current, node_to)
                 best_score = False
                 
                 # Add the new node to the open list.
@@ -127,7 +127,7 @@ class Pathfinder(object):
         return None
     
     
-    def get_move_cost(self, connection_from, connection_to, node_to):
+    def get_move_cost(self, connection_from, connection_to, node_from, node_to):
         # Teleporters connect at no cost.
         if (connection_to.flags & Connection.FLAG_TELEPORTER) != 0:
             move_cost = 0
@@ -141,13 +141,17 @@ class Pathfinder(object):
             cx2, cy2 = connection_to.center
             move_cost = abs(cx2 - cx1) + abs(cy2 - cy1)
         
-        # Multiple cost for damaging areas.
+        # Multiply cost for damaging areas.
         if (node_to.area.flags & Element.FLAG_DAMAGE_LOW) != 0:
             move_cost *= 2
         elif (node_to.area.flags & Element.FLAG_DAMAGE_MEDIUM) != 0:
             move_cost *= 4
         elif (node_to.area.flags & Element.FLAG_DAMAGE_HIGH) != 0:
             move_cost *= 8
+        
+        # Avoid drop offs.
+        if node_from.area.z > node_to.area.z + 24:
+            move_cost *= 2
             
         return move_cost
     
