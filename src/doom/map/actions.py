@@ -1,13 +1,5 @@
 class Action(object):
     
-    __slots__ = (
-        'index',
-        'type',
-        'activation',
-        'flags'
-    )
-    
-    
     # Effect types.
     TYPE_DOOR = 0
     TYPE_FLOOR = 1
@@ -20,6 +12,22 @@ class Action(object):
     TYPE_ELEVATOR = 8
     TYPE_EXIT = 9
     TYPE_DOOR_LOCKED = 10
+    TYPE_LIGHT = 11
+    
+    type_mapping = {
+        'door': TYPE_DOOR,
+        'floor': TYPE_FLOOR,
+        'ceiling': TYPE_CEILING,
+        'crusher': TYPE_CRUSHER,
+        'teleporter': TYPE_TELEPORTER,
+        'donut': TYPE_DONUT,
+        'stairs': TYPE_STAIRS,
+        'platform': TYPE_PLATFORM,
+        'elevator': TYPE_ELEVATOR,
+        'exit': TYPE_EXIT,
+        'lockeddoor': TYPE_DOOR_LOCKED,
+        'light': TYPE_LIGHT
+    }
     
     # Activation types.
     ACTIVATE_PUSH = 0
@@ -27,104 +35,245 @@ class Action(object):
     ACTIVATE_WALK = 2
     ACTIVATE_SHOOT = 3
     
+    activate_mapping = {
+        'push': ACTIVATE_PUSH,
+        'switch': ACTIVATE_SWITCH,
+        'walk': ACTIVATE_WALK,
+        'shoot': ACTIVATE_SHOOT
+    }
+    
+    # Movement types.
+    MOVE_UP = 0
+    MOVE_DOWN = 1
+    
+    movement_mapping = {
+        'up': MOVE_UP,
+        'down': MOVE_DOWN
+    }
+
+    # Door types.
+    DOOR_OPEN_WAIT_CLOSE = 0
+    DOOR_OPEN_STAY = 1
+    DOOR_CLOSE_STAY = 2
+    DOOR_CLOSE_WAIT_OPEN = 3
+    
+    door_mapping = {
+        'openwaitclose': DOOR_OPEN_WAIT_CLOSE,
+        'openstay': DOOR_OPEN_STAY,
+        'closestay': DOOR_CLOSE_STAY,
+        'closewaitopen': DOOR_CLOSE_WAIT_OPEN,
+    }
+    
+    # Key flags.
+    KEY_CARD_BLUE = 0x1
+    KEY_CARD_RED = 0x2
+    KEY_CARD_YELLOW = 0x4
+    KEY_SKULL_BLUE = 0x8
+    KEY_SKULL_RED = 0x10
+    KEY_SKULL_YELLOW = 0x20
+    KEY_ALL = 0x40
+    KEY_ANY = 0x80
+    KEY_SKULLS_ARE_CARDS = 0x100
+    
+    key_flags_mapping = {
+        'cardblue': KEY_CARD_BLUE,
+        'cardred': KEY_CARD_RED,
+        'cardyellow': KEY_CARD_YELLOW,
+        'skullblue': KEY_SKULL_BLUE,
+        'skullred': KEY_SKULL_RED,
+        'skullyellow': KEY_SKULL_YELLOW,
+        'all': KEY_ALL,
+        'any': KEY_ANY,
+        'skulliscard': KEY_SKULLS_ARE_CARDS
+    }
+
+    # Sector move targets.
+    TARGET_LOWEST_NEIGHBOUR_CEILING = 0
+    TARGET_LOWEST_NEIGHBOUR_CEILING8 = 1
+    TARGET_LOWEST_NEIGHBOUR_FLOOR = 2
+    TARGET_LOWEST_NEIGHBOUR_FLOOR8 = 3
+    TARGET_NEXT_NEIGHBOUR_CEILING = 4
+    TARGET_NEXT_NEIGHBOUR_FLOOR = 5
+    TARGET_HIGHEST_NEIGHBOUR_CEILING = 6
+    TARGET_HIGHEST_NEIGHBOUR_CEILING8 = 7
+    TARGET_HIGHEST_NEIGHBOUR_FLOOR = 8
+    TARGET_HIGHEST_NEIGHBOUR_FLOOR8 = 9
+    TARGET_SHORTEST_LOWER_TEXTURE = 10
+    TARGET_CEILING = 11
+    TARGET_CEILING8 = 12
+    TARGET_FLOOR = 13
+    TARGET_FLOOR8 = 14
+    TARGET_NEXT_LOWEST = 15
+    TARGET_NEXT_HIGHEST = 16
+    TARGET_CURRENT_FLOOR = 17
+    TARGET_NEXT_LOWEST_FLOOR = 18
+    TARGET_NEXT_HIGHEST_FLOOR = 19
+    TARGET_NEXT_FLOOR = 20
+    TARGET_LOWEST_AND_HIGHEST = 21
+    
+    target_mapping = {
+        'lowestneighbourceiling': TARGET_LOWEST_NEIGHBOUR_CEILING,
+        'lowestneighbourceiling8': TARGET_LOWEST_NEIGHBOUR_CEILING8,
+        'lowestneighbourfloor': TARGET_LOWEST_NEIGHBOUR_FLOOR,
+        'lowestneighbourfloor8': TARGET_LOWEST_NEIGHBOUR_FLOOR8,
+        'nextneighbourceiling': TARGET_NEXT_NEIGHBOUR_CEILING,
+        'nextneighbourfloor': TARGET_NEXT_NEIGHBOUR_FLOOR,
+        'highestneighbourceiling': TARGET_HIGHEST_NEIGHBOUR_CEILING,
+        'highestneighbourceiling8': TARGET_HIGHEST_NEIGHBOUR_CEILING8,
+        'highestneighbourfloor': TARGET_HIGHEST_NEIGHBOUR_FLOOR,
+        'highestneighbourfloor8': TARGET_HIGHEST_NEIGHBOUR_FLOOR8,
+        'shortestlower': TARGET_SHORTEST_LOWER_TEXTURE,
+        'targetceiling': TARGET_CEILING,
+        'targetceiling8': TARGET_CEILING8,
+        'targetfloor': TARGET_FLOOR,
+        'targetfloor8': TARGET_FLOOR8,
+        'currentfloor': TARGET_CURRENT_FLOOR,
+        'nextlowestfloor': TARGET_NEXT_LOWEST_FLOOR,
+        'nexthighestfloor': TARGET_NEXT_HIGHEST_FLOOR,
+        'nextfloor': TARGET_NEXT_FLOOR,
+        'lowestandhighest': TARGET_LOWEST_AND_HIGHEST
+    }
+    
+    # Mover properties changes.
+    CHANGE_TEXTURE = 0x1
+    CHANGE_TYPE = 0x2
+    CHANGE_REMOVE_TYPE = 0x4
+    
+    change_flags_mapping = {
+        'changetexture': CHANGE_TEXTURE,
+        'changetype': CHANGE_TYPE,
+        'removetype': CHANGE_REMOVE_TYPE
+    }
+    
+    # Mover model sector selection.
+    MODEL_NUMERIC = 0
+    MODEL_TRIGGER = 1
+    
+    model_mapping = {
+        'numeric': MODEL_NUMERIC,
+        'trigger': MODEL_TRIGGER
+    }
+    
+    # Teleporter types.
+    TELEPORT_THING = 0
+    TELEPORT_LINE = 1
+    TELEPORT_LINE_REVERSED = 2
+    
+    teleport_mapping = {
+        'thing': TELEPORT_THING,
+        'line': TELEPORT_LINE,
+        'linereversed': TELEPORT_LINE_REVERSED
+    }
+    
+    # Light type mapping.
+    LIGHT_35 = 0
+    LIGHT_255 = 1
+    LIGHT_BLINK = 2
+    LIGHT_MIN_NEIGHBOUR = 3
+    LIGHT_MAX_NEIGHBOUR = 4
+    LIGHT_LOWEST_NEIGHBOUR = 5
+    
+    light_mapping = {
+        'light35': LIGHT_35,
+        'light255': LIGHT_255,
+        'blink': LIGHT_BLINK,
+        'minneighbour': LIGHT_MIN_NEIGHBOUR,
+        'maxneighbour': LIGHT_MAX_NEIGHBOUR,
+        'lowestneighbour': LIGHT_LOWEST_NEIGHBOUR
+    }
+    
+    # Movement speed tic mapping.
+    # TODO: Find the right values from code.
+    speed_mapping = {
+        'slow': 16,
+        'fast': 32,
+        'instant': 0
+    }
+    
+    # Waiting time tic mapping.
+    wait_mapping = {
+        'wait3': 105,
+        'wait4': 140,
+        'wait30': 1050
+    }
+    
+    # Movement distance mapping.
+    distance_mapping = {
+        'move8': 8,
+        'move16': 16,
+        'move24': 24,
+        'move32': 32,
+        'move512': 512
+    }
     
     # Can be activated only once.
     FLAG_ONCE = 0x1
     
-    # Movement direction.
-    FLAG_UP = 0x2
-    FLAG_DOWN = 0x4
-
-    # Keys.
-    FLAG_KEY_BLUE = 0x8
-    FLAG_KEY_RED = 0x10
-    FLAG_KEY_YELLOW = 0x20
-    FLAG_SKULL_BLUE = 0x40
-    FLAG_SKULL_RED = 0x80
-    FLAG_SKULL_YELLOW = 0x100
+    # Cannot be activated by players.
+    FLAG_NO_PLAYER = 0x2
     
-    # Need all key colors or need any key color.
-    FLAG_ALL = 0x200
-    FLAG_ANY = 0x400
-    
-    # Skullcards function as keycards.
-    FLAG_SKULL_IS_KEY = 0x800
+    # Can be activated by monsters.
+    FLAG_MONSTER = 0x4
     
     # Will crush things.
-    FLAG_CRUSHES = 0x1000
+    FLAG_CRUSHES = 0x8
     
-    # Teleports to a line.
-    FLAG_TELEPORT_LINE = 0x2000
+    # Starts or stops movement.
+    FLAG_STARTS = 0x10
+    FLAG_STOPS = 0x20
     
-    # Starts or stops a crusher.
-    FLAG_STARTS = 0x4000
-    FLAG_STOPS = 0x8000
-    
-    # Crushes silently.
-    FLAG_SILENT = 0x10000
+    # Moves silently.
+    FLAG_SILENT = 0x40
     
     # Is a secret exit.
-    FLAG_SECRET = 0x20000
+    FLAG_SECRET_EXIT = 0x80
     
-    # Ignore floor texture changes.
-    FLAG_IGNORE_FLOOR = 0x40000
+    # Ignores floor texture changes.
+    FLAG_IGNORE_FLOOR = 0x100
+    
+    # Preserve angle when teleporting.
+    FLAG_PRESERVE_ANGLE = 0x200
+    
+    flags_mapping = {
+        'once': FLAG_ONCE,
+        'noplayer': FLAG_NO_PLAYER,
+        'monster': FLAG_MONSTER,
+        'crush': FLAG_CRUSHES,
+        'start': FLAG_STARTS,
+        'stop': FLAG_STOPS,
+        'silent': FLAG_SILENT,
+        'secret': FLAG_SECRET_EXIT,
+        'ignorefloor': FLAG_IGNORE_FLOOR,
+        'preserveangle': FLAG_PRESERVE_ANGLE
+    }
     
     
     def __init__(self):
         self.index = 1
         self.type = Action.TYPE_DOOR
         self.activation = Action.ACTIVATE_PUSH
+        
+        self.door_type = Action.DOOR_OPEN_WAIT_CLOSE
+        self.teleport_type = Action.TELEPORT_THING
+        
+        self.key_flags = 0
+        self.change_flags = 0
         self.flags = 0
+        
+        self.speed = 8
+        self.wait_time = 105
+        self.direction = Action.MOVE_UP
+        self.target = Action.TARGET_HIGHEST_NEIGHBOUR_CEILING
+        self.move_amount = 0
+        self.model = Action.MODEL_TRIGGER
+        self.light_change = Action.LIGHT_255
     
     
     def __repr__(self):
-        return 'Action {}: type {}, activation {}, flags {}'.format(self.index, self.type, self.activation, self.flags)
+        return 'Action {}: type {}'.format(self.index, self.type)
     
 
 class ActionTypes(object):
-    
-    type_mapping = {
-        'door': Action.TYPE_DOOR,
-        'floor': Action.TYPE_FLOOR,
-        'ceiling': Action.TYPE_CEILING,
-        'crusher': Action.TYPE_CRUSHER,
-        'teleporter': Action.TYPE_TELEPORTER,
-        'donut': Action.TYPE_DONUT,
-        'stairs': Action.TYPE_STAIRS,
-        'platform': Action.TYPE_PLATFORM,
-        'elevator': Action.TYPE_ELEVATOR,
-        'exit': Action.TYPE_EXIT,
-        'lockeddoor': Action.TYPE_DOOR_LOCKED
-    }
-    
-    activate_mapping = {
-        'push': Action.ACTIVATE_PUSH,
-        'switch': Action.ACTIVATE_SWITCH,
-        'walk': Action.ACTIVATE_WALK,
-        'shoot': Action.ACTIVATE_SHOOT
-    }
-    
-    flag_mapping = {
-        'once': Action.FLAG_ONCE,
-        'up': Action.FLAG_UP,
-        'down': Action.FLAG_DOWN,
-        'keyblue': Action.FLAG_KEY_BLUE,
-        'keyred': Action.FLAG_KEY_RED,
-        'keyyellow': Action.FLAG_KEY_YELLOW,
-        'crush': Action.FLAG_CRUSHES,
-        'line': Action.FLAG_TELEPORT_LINE,
-        'start': Action.FLAG_STARTS,
-        'stop': Action.FLAG_STOPS,
-        'secret': Action.FLAG_SECRET,
-        'skulliskey': Action.FLAG_SKULL_IS_KEY,
-        'silent': Action.FLAG_SILENT,
-        'all': Action.FLAG_ALL,
-        'any': Action.FLAG_ANY,
-        'blueskull': Action.FLAG_SKULL_BLUE,
-        'redskull': Action.FLAG_SKULL_RED,
-        'yellowskull': Action.FLAG_SKULL_YELLOW,
-        'ignorefloor': Action.FLAG_IGNORE_FLOOR
-    }
     
     BOOM_TRIGGER = 0x7
     BOOM_SPEED = 0x18
@@ -171,15 +320,34 @@ class ActionTypes(object):
         action.index = index
         
         for keyword in keywords.split(','):
-            if keyword in self.type_mapping:
-                action.type = self.type_mapping[keyword]
-            
-            elif keyword in self.activate_mapping:
-                action.activation = self.activate_mapping[keyword]
-                
-            elif keyword in self.flag_mapping:
-                action.flags |= self.flag_mapping[keyword]
-            
+            if keyword in Action.type_mapping:
+                action.type = Action.type_mapping[keyword]
+            elif keyword in Action.activate_mapping:
+                action.activation = Action.activate_mapping[keyword]
+            elif keyword in Action.movement_mapping:
+                action.direction = Action.movement_mapping[keyword]
+            elif keyword in Action.door_mapping:
+                action.door_type = Action.door_mapping[keyword]
+            elif keyword in Action.key_flags_mapping:
+                action.key_flags |= Action.key_flags_mapping[keyword]
+            elif keyword in Action.target_mapping:
+                action.target = Action.target_mapping[keyword]
+            elif keyword in Action.change_flags_mapping:
+                action.change_flags |= Action.change_flags_mapping[keyword]
+            elif keyword in Action.model_mapping:
+                action.model = Action.model_mapping[keyword]
+            elif keyword in Action.teleport_mapping:
+                action.teleport_type = Action.teleport_mapping[keyword]
+            elif keyword in Action.flags_mapping:
+                action.flags |= Action.flags_mapping[keyword]
+            elif keyword in Action.speed_mapping:
+                action.speed = Action.speed_mapping[keyword]
+            elif keyword in Action.wait_mapping:
+                action.wait_time = Action.wait_mapping[keyword]
+            elif keyword in Action.distance_mapping:
+                action.move_amount = Action.distance_mapping[keyword]
+            elif keyword in Action.light_mapping:
+                action.light_change = Action.light_mapping[keyword]
             else:
                 print 'Unknown action keyword "{}".'.format(keyword)
         
