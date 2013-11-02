@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #coding=utf8
 
-from doom.map.actions import Action
+from doom.actions.action import Action
 from doom.map.objects import Teleporter, Segment, Linedef, Sector
 from doom.map.plane import plane_setup
 from util.vector import Vector2
@@ -54,7 +54,7 @@ class MapSetup(object):
         
         for index, keywords in self.config.linedef_specials.iteritems():
             index = int(index)
-            self.map_data.action_types.add(index, keywords)
+            self.map_data.actions.add(index, keywords)
     
     
     def setup_teleporters(self):
@@ -64,14 +64,14 @@ class MapSetup(object):
         
         self.map_data.teleporters = []
         for line_index, linedef in enumerate(self.map_data.linedefs):
-            action = self.map_data.action_types.get(linedef.action)
+            action = self.map_data.actions.get(linedef.action)
             if action is None:
                 continue
             if action.type != Action.TYPE_TELEPORTER:
                 continue
             
             # Line to line teleporters.
-            if (action.flags & Action.FLAG_TELEPORT_LINE) != 0:
+            if Action.teleport_type != Action.TELEPORT_THING:
                 kind = Teleporter.TELEPORTER_LINE
                 dest_line = self.map_data.get_line_destination(line_index)
                 if dest_line is None:
@@ -170,7 +170,7 @@ class MapSetup(object):
         """
     
         for linedef in self.map_data.linedefs:
-            action = self.map_data.action_types.get(linedef.action)
+            action = self.map_data.actions.get(linedef.action)
             if action is None:
                 continue
             if action.type != Action.TYPE_STAIRS:
@@ -431,7 +431,7 @@ class MapSetup(object):
             
         # Detect more complex linedef activation.
         for linedef in self.map_data.linedefs:
-            action = self.map_data.action_types.get(linedef.action)
+            action = self.map_data.actions.get(linedef.action)
             if action is None:
                 continue
             
