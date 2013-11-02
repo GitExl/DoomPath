@@ -99,6 +99,11 @@ class Pathfinder(object):
                 if node_to in closed_list:
                     continue
                 
+                # Test if we can move from this area to the other.
+                if node_current.area.sector is not None or node_to.area.sector is not None:
+                    if self.can_traverse(node_current.area, node_to.area) == False:
+                        continue
+                
                 # Determine the cost to move to this node.
                 cost = node_current.move_cost + self.get_move_cost(node_current.parent_connection, connection, node_current, node_to)
                 best_score = False
@@ -127,6 +132,24 @@ class Pathfinder(object):
         return None
     
     
+    def can_traverse(self, area_from, area_to):
+        # Into special area.
+        if area_from.sector is None and area_to.sector is not None:
+            pass
+        
+        # Out of special area.
+        elif area_from.sector is not None and area_to.sector is None:
+            pass
+        
+        # Passing through the same special area.
+        elif area_from.sector == area_to.sector:
+            return True
+        
+        # Passing through different special areas.
+        else:
+            pass
+    
+    
     def get_move_cost(self, connection_from, connection_to, node_from, node_to):
         # Teleporters connect at no cost.
         if (connection_to.flags & Connection.FLAG_TELEPORTER) != 0:
@@ -151,7 +174,7 @@ class Pathfinder(object):
         
         # Avoid drop offs.
         if node_from.area.z > node_to.area.z + 24:
-            move_cost *= 2
+            move_cost *= 10
             
         return move_cost
     
